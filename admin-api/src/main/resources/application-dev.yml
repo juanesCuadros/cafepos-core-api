@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    # Misma base que core-api (ver docker-compose.yml de cafepos-core-api,
+    # puerto 5434), pero rol app_platform: BYPASSRLS, exclusivo de admin-api.
+    # NUNCA usar app_tenant aca (ver CLAUDE.md).
+    url: jdbc:postgresql://localhost:5434/cafepos
+    username: app_platform
+    password: dev_only_password_platform
+
+logging:
+  level:
+    com.cafepos.admin: DEBUG
+
+cafepos:
+  admin:
+    jwt:
+      signing-key: dev-only-admin-signing-key-nunca-usar-en-produccion-cambiar-por-variable-de-entorno

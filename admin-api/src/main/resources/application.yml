@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: admin-api
+
+  # No Flyway en este proyecto: el schema ya existe (lo crea y versiona
+  # core-api). ddl-auto=validate confirma que la entidad Superadmin y
+  # SuperadminRefreshToken coinciden con las tablas reales, nunca las crea.
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+# Configuracion propia de admin-api. Llave de firma y issuer/audience
+# separados de core-api a proposito: sin sesion compartida entre los dos
+# servicios (ver CLAUDE.md).
+cafepos:
+  admin:
+    jwt:
+      signing-key: ${CAFEPOS_ADMIN_JWT_SIGNING_KEY}
+      issuer: cafepos-admin-api
+      audience: cafepos-admin-api
+      access-token-ttl-minutes: 10
+    refresh-token:
+      ttl-days: 7
