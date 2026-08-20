@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    # Conexión de RUNTIME de la aplicación — app_tenant es el rol sin
+    # BYPASSRLS creado en V1__schema_v4.sql. core-api NUNCA debe
+    # conectarse como superusuario para las consultas normales.
+    # Puerto 5434 (no 5432): el 5432 está ocupado por un PostgreSQL nativo
+    # de Windows en esta máquina, y el 5433 por otro contenedor (ipm_bi_db)
+    # — ver docker-compose.yml.
+    url: jdbc:postgresql://localhost:5434/cafepos
+    username: app_tenant
+    password: dev_only_password   # ver README: setear con ALTER ROLE tras la 1a migración
+
+  flyway:
+    # Conexión SEPARADA para migraciones — CREATE ROLE / ENABLE ROW LEVEL
+    # SECURITY requieren privilegios que app_tenant NO debe tener. Usa el
+    # superusuario de docker-compose (postgres/postgres, solo desarrollo).
+    url: jdbc:postgresql://localhost:5434/cafepos
+    user: postgres
+    password: postgres
+
+logging:
+  level:
+    com.cafepos: DEBUG
+    org.springframework.modulith: DEBUG
+
+cafepos:
+  jwt:
+    signing-key: dev-only-signing-key-nunca-usar-en-produccion-cambiar-por-variable-de-entorno
+
+# Swagger UI / OpenAPI — habilitado SOLO en dev (ver application.yml, donde
+# queda deshabilitado por defecto). Recordar: mientras no exista
+# SecurityConfig, estas rutas NO tienen permitAll y Spring Security las
+# bloqueará (401/403) igual que cualquier endpoint sin autenticar — ver
+# PENDIENTE #1 en com.cafepos.core.shared.openapi.OpenApiConfig.
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

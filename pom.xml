@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    CaféPOS — core-api
+    Ver /docs (o cafepos_arquitectura_backend_v1.md) para el detalle de cada
+    decisión de arquitectura reflejada en este pom.
+
+    NOTA DE VERSIÓN (a revisar): se fija Spring Boot 3.5.x (rama estable,
+    madura) en vez de Spring Boot 4.0 (GA desde nov-2025). Spring Modulith
+    recién publicó su primera compatibilidad con Boot 4 en ene-2026 (2.1.0-M1),
+    todavía reciente para un proyecto solo, con manejo de pagos/DIAN de por
+    medio. Reevaluar la migración a Boot 4 más adelante, cuando el ecosistema
+    (JWT, TOTP, Resilience4j, etc.) tenga más tiempo probado sobre Boot 4.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.cafepos</groupId>
+    <artifactId>core-api</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <name>core-api</name>
+    <description>CaféPOS — servicio principal (Operación, Caja, Productos, Inventario, Compras, Clientes, Personal, Gastos, Contabilidad, Reportes, Configuración, Restaurante)</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <spring-modulith.version>1.4.0</spring-modulith.version>
+        <jjwt.version>0.12.6</jjwt.version>
+        <totp.version>1.7.1</totp.version>
+        <caffeine.version>3.1.8</caffeine.version>
+        <!-- FIJADA en 2.8.14 a propósito, NO es la última 2.x (2.9.0):
+             2.8.15+ (incluida la 2.9.0) registra un resource handler para
+             swagger-ui con un patrón inválido para el PathPatternParser de
+             Spring Boot 3.5 ("No more pattern data allowed after ...
+             pattern element" en /swagger-ui/**/*index.html o
+             /swagger-ui/**/*swagger-initializer.js) que tumba el arranque
+             en cuanto springdoc.swagger-ui.enabled=true. Confirmado en este
+             proyecto probando 2.9.0 y 2.8.17 (mismo error, dos archivos
+             distintos) — no es un problema de SecurityConfig, ver su
+             Javadoc. Reintentar con una versión más nueva cuando springdoc
+             lo corrija (revisar github.com/springdoc/springdoc-openapi
+             issues #3145 / #3210). -->
+        <springdoc.version>2.8.14</springdoc.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.modulith</groupId>
+                <artifactId>spring-modulith-bom</artifactId>
+                <version>${spring-modulith.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+            <!-- KDS en tiempo real (Sub-vista 2.3) — STOMP sobre WebSocket -->
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Seguridad -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <!-- TOTP para 2FA de Super Admin (ver admin-api, no core-api,
+                 pero se deja documentado aquí el estándar elegido para
+                 mantener consistencia entre servicios) -->
+            <groupId>dev.samstevens.totp</groupId>
+            <artifactId>totp</artifactId>
+            <version>${totp.version}</version>
+        </dependency>
+
+        <!-- Persistencia -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- Modularidad -->
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-starter-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-starter-jpa</artifactId>
+            <!-- Event Publication Registry: persiste eventos entre módulos
+                 hasta confirmar que todos los listeners los procesaron -->
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Caché de permisos por (tenant_id, rol_id) -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>${caffeine.version}</version>
+        </dependency>
+
+        <!-- Observabilidad / operación en PaaS -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Documentación interactiva de la API (Swagger UI / OpenAPI 3).
+             Habilitada SOLO por property (ver springdoc.swagger-ui.enabled en
+             application-dev.yml) — ver com.cafepos.core.shared.openapi. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- Utilidad -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <!-- Genera META-INF/build-info.properties -> Spring Boot
+                             autoconfigura BuildProperties, usado por OpenApiConfig
+                             para tomar la versión de la API desde el pom. -->
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

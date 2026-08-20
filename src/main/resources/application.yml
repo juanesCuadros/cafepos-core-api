@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: cafepos-core-api
+
+  # JPA/Hibernate — el DDL SIEMPRE lo maneja Flyway, nunca Hibernate.
+  # (ddl-auto=validate: Hibernate solo confirma que las entidades coinciden
+  # con el schema que Flyway ya aplicó; nunca crea/modifica tablas)
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  modulith:
+    events:
+      # Event Publication Registry en la misma base de datos — persiste
+      # eventos entre módulos hasta confirmar que todos los listeners los
+      # procesaron (relevante ej. para Contabilidad reaccionando a ventas).
+      # La tabla la crea Flyway (V3__event_publication.sql), NO esta
+      # auto-inicialización: con hibernate.ddl-auto=validate, Hibernate
+      # valida el esquema antes de que esta inicialización llegue a correr,
+      # y falla con "missing table [event_publication]".
+      jdbc-schema-initialization:
+        enabled: false
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never  # nunca exponer detalle de salud sin autenticación
+
+logging:
+  pattern:
+    # tenant_id en cada línea de log — indispensable para depurar en un
+    # sistema multi-tenant (ver arquitectura, sección "Despliegue")
+    level: "%5p [tenant=%X{tenant_id}]"
+
+# Swagger UI / OpenAPI — deshabilitado por defecto en TODO ambiente.
+# Solo application-dev.yml lo pone en true. No agregar acá un valor por
+# defecto distinto de false: si algún día se necesita en otro ambiente,
+# debe ser una decisión explícita en el yml de ESE perfil, nunca heredada.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# Configuración propia de CaféPOS — ver shared.seguridad / shared.tenant
+cafepos:
+  jwt:
+    # Llave de firma propia de core-api (distinta a la de admin-api),
+    # inyectada vía variable de entorno, nunca hardcodeada.
+    signing-key: ${CAFEPOS_CORE_JWT_SIGNING_KEY}
+    access-token-ttl-minutes: 15
+  refresh-token:
+    ttl-days: 30
+  pin-authorization:
+    token-ttl-minutes: 2
+  tenant:
+    base-domain: cafepos.com   # resuelve {slug}.cafepos.com → tenant_id
