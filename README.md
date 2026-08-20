@@ -25,30 +25,41 @@ generados.
 docker compose up -d
 ```
 
-**2. Ejecutar las migraciones Flyway (crea el schema completo + roles de BD):**
+**2. Arrancar la aplicación por primera vez (corre las migraciones Flyway):**
 ```bash
-mvn flyway:migrate -Dspring.profiles.active=dev
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Este paso ejecuta `V1__schema_v4.sql` (todo el modelo de datos + los roles
-`app_tenant`/`app_platform`) y `V2__catalogo_permisos.sql` (catálogo de
-permisos poblado). Se conecta como superusuario `postgres` (ver
-`application-dev.yml` → `spring.flyway.*`), porque crear roles y activar
+No hay `flyway-maven-plugin` en el `pom.xml`, ni falta: `spring-boot:run`
+ya dispara las migraciones automáticamente al arrancar, vía
+`FlywayAutoConfiguration`, conectado como superusuario `postgres` (ver
+`application-dev.yml` → `spring.flyway.*`) — porque crear roles y activar
 Row Level Security requiere privilegios que la aplicación en sí **nunca**
-debe tener.
+debe tener. Este paso ejecuta `V1__schema_v4.sql` (todo el modelo de datos
++ los roles `app_tenant`/`app_platform`), `V2__catalogo_permisos.sql`
+(catálogo de permisos poblado) y `V3__event_publication.sql`.
 
-**3. Fijar la contraseña real del rol `app_tenant` para desarrollo local**
-(en `V1__schema_v4.sql` queda un placeholder a propósito — nunca debe haber
-una contraseña real en un script versionado en Git):
+**Este primer arranque va a fallar** justo después de que las migraciones
+terminen (el mensaje de Flyway en consola dirá éxito): el datasource de la
+app (`spring.datasource.*`) se conecta como `app_tenant`, que todavía tiene
+el password placeholder de la migración, no el real. Es esperado — seguir
+con el paso 3.
+
+**3. Fijar la contraseña real de los roles para desarrollo local**
+(en `V1__schema_v4.sql` quedan con un placeholder a propósito — nunca debe
+haber una contraseña real en un script versionado en Git):
 ```bash
 docker exec -it cafepos-postgres-dev psql -U postgres -d cafepos \
-  -c "ALTER ROLE app_tenant PASSWORD 'dev_only_password';"
+  -c "ALTER ROLE app_tenant PASSWORD 'dev_only_password';" \
+  -c "ALTER ROLE app_platform PASSWORD 'dev_only_password_platform';"
 ```
-(La contraseña `dev_only_password` ya coincide con `application-dev.yml`. En
-cualquier ambiente real, esto se gestiona por variable de entorno / secret
-manager del proveedor de hosting, nunca a mano así.)
+(`dev_only_password` ya coincide con `application-dev.yml`. La de
+`app_platform` no se usa todavía — `admin-api` aún no existe — pero queda
+lista para cuando se construya. En cualquier ambiente real, esto se
+gestiona por variable de entorno / secret manager del proveedor de
+hosting, nunca a mano así.)
 
-**4. Levantar la aplicación:**
+**4. Levantar la aplicación de nuevo:**
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
