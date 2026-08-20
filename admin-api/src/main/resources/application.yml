@@ -26,6 +26,14 @@ management:
     health:
       show-details: never
 
+# Swagger UI / OpenAPI — deshabilitado por defecto en TODO ambiente.
+# Solo application-dev.yml lo pone en true, mismo patron que core-api.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 # Configuracion propia de admin-api. Llave de firma y issuer/audience
 # separados de core-api a proposito: sin sesion compartida entre los dos
 # servicios (ver CLAUDE.md).

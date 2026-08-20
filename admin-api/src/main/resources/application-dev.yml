@@ -15,3 +15,11 @@ cafepos:
   admin:
     jwt:
       signing-key: dev-only-admin-signing-key-nunca-usar-en-produccion-cambiar-por-variable-de-entorno
+
+# Swagger UI / OpenAPI — habilitado SOLO en dev (ver application.yml, donde
+# queda deshabilitado por defecto).
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
