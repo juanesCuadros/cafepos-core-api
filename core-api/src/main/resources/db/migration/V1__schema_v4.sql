@@ -1253,8 +1253,21 @@ ALTER TABLE tenants ADD COLUMN slug VARCHAR(50) UNIQUE NOT NULL;
 -- ============================================================================
 -- ============================================================================
 
-CREATE ROLE app_tenant LOGIN PASSWORD '__REEMPLAZAR_VIA_SECRET_MANAGER__';
-CREATE ROLE app_platform LOGIN PASSWORD '__REEMPLAZAR_VIA_SECRET_MANAGER__' BYPASSRLS;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_roles WHERE rolname = 'app_tenant'
+    ) THEN
+        CREATE ROLE app_tenant LOGIN PASSWORD '__REEMPLAZAR_VIA_SECRET_MANAGER__';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_roles WHERE rolname = 'app_platform'
+    ) THEN
+        CREATE ROLE app_platform LOGIN PASSWORD '__REEMPLAZAR_VIA_SECRET_MANAGER__' BYPASSRLS;
+    END IF;
+END
+$$;
 
 -- app_tenant: acceso estándar a toda tabla de capa tenant, EXCEPTO
 -- evento_auditoria, que solo permite INSERT y SELECT (append-only real).
