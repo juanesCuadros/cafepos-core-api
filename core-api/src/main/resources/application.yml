@@ -64,6 +64,8 @@ cafepos:
     # Llave de firma propia de core-api (distinta a la de admin-api),
     # inyectada vía variable de entorno, nunca hardcodeada.
     signing-key: ${CAFEPOS_CORE_JWT_SIGNING_KEY}
+    issuer: cafepos-core-api
+    audience: cafepos-core-api
     access-token-ttl-minutes: 15
   refresh-token:
     ttl-days: 30

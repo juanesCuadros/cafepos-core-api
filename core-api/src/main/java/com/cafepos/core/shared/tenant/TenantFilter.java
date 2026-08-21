@@ -1,5 +1,6 @@
 package com.cafepos.core.shared.tenant;
 
+import com.cafepos.core.shared.excepciones.FilterErrorWriter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,37 +10,31 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
 /**
- * Resuelve el slug del tenant para el request actual y lo deja disponible
- * en TenantContext mientras dura el request.
+ * Resuelve el tenant del request actual y lo deja disponible en
+ * TenantContext (slug + id) mientras dura el request.
  *
- * Resolución:
+ * Resolución del SLUG:
  *   1. Perfil "dev" + header "X-Tenant-Slug" presente -> se usa el header
  *      (para poder probar desde Swagger UI en localhost, sin subdominio).
  *   2. Cualquier otro caso -> se parsea el subdominio del Host contra
  *      cafepos.tenant.base-domain (ej. "demo.cafepos.com" -> "demo").
- * El header se IGNORA por completo fuera de perfil "dev" — nunca es una
- * forma válida de resolver tenant fuera de desarrollo.
+ * El header se IGNORA por completo fuera de perfil "dev".
  *
- * LÍMITE IMPORTANTE — leer antes de asumir que esto ya aísla tenants:
- * este filtro SOLO resuelve el slug. NO consulta la base de datos para
- * convertirlo en tenant_id, y NO ejecuta "SET LOCAL app.current_tenant_id"
- * (el comando que activa las políticas de Row-Level Security de Postgres,
- * ver V1__schema_v4.sql). Eso requiere:
- *   - Una entidad/repositorio Tenant (no existen todavía en el proyecto —
- *     no hay ninguna entidad JPA en todo el código a la fecha).
- *   - Atar el SET LOCAL a la MISMA conexión/transacción que abre la capa
- *     de persistencia más adelante en el stack (open-in-view=false, así
- *     que la transacción no existe todavía en este filtro) — típicamente
- *     vía el SPI de multi-tenancy de Hibernate (CurrentTenantIdentifierResolver
- *     + MultiTenantConnectionProvider) o equivalente.
- * Hasta que esa pieza exista, RLS no tiene ninguna variable de sesión
- * seteada por la aplicación.
+ * Si no se pudo resolver ningún slug (ej. Swagger UI estática, actuator,
+ * host sin subdominio), el filtro simplemente no setea tenant_id y sigue —
+ * eso no rompe nada que no requiera tenant. Si SÍ hay un slug pero no
+ * corresponde a ningún tenant real, se rechaza aca mismo con 404: dejar
+ * pasar el request con tenant_id=null haría que el primer "SET LOCAL"
+ * (ver TenantAwareJpaTransactionManager) se saltee, y cualquier query a una
+ * tabla con RLS activo fallaría con un error crudo de Postgres en vez de un
+ * error claro.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
@@ -50,11 +45,17 @@ public class TenantFilter extends OncePerRequestFilter {
 
     private final Environment environment;
     private final String baseDomain;
+    private final TenantRepository tenantRepository;
+    private final FilterErrorWriter filterErrorWriter;
 
     public TenantFilter(Environment environment,
-                         @Value("${cafepos.tenant.base-domain}") String baseDomain) {
+                         @Value("${cafepos.tenant.base-domain}") String baseDomain,
+                         TenantRepository tenantRepository,
+                         FilterErrorWriter filterErrorWriter) {
         this.environment = environment;
         this.baseDomain = baseDomain;
+        this.tenantRepository = tenantRepository;
+        this.filterErrorWriter = filterErrorWriter;
     }
 
     @Override
@@ -63,9 +64,17 @@ public class TenantFilter extends OncePerRequestFilter {
                                      FilterChain filterChain) throws ServletException, IOException {
         try {
             String slug = resolveSlug(request);
-            if (slug != null) {
-                TenantContext.setCurrentSlug(slug);
+            if (slug == null) {
+                filterChain.doFilter(request, response);
+                return;
             }
+            TenantContext.setCurrentSlug(slug);
+            Tenant tenant = tenantRepository.findBySlug(slug).orElse(null);
+            if (tenant == null) {
+                filterErrorWriter.escribir(response, HttpStatus.NOT_FOUND.value(), "Negocio no encontrado");
+                return;
+            }
+            TenantContext.setCurrentTenantId(tenant.getId());
             filterChain.doFilter(request, response);
         } finally {
             TenantContext.clear();

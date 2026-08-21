@@ -1,4 +1,4 @@
-package com.cafepos.admin.auth.infrastructure.web;
+package com.cafepos.admin.shared;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;

@@ -46,3 +46,7 @@ cafepos:
       access-token-ttl-minutes: 10
     refresh-token:
       ttl-days: 7
+  tenant:
+    # Dominio publico bajo el que se sirve cada negocio (POST /admin/negocios
+    # arma la url de vuelta con este valor: https://{slug}.{base-domain}).
+    base-domain: resttodash.app

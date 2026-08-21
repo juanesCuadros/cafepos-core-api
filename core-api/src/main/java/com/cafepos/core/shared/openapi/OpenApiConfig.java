@@ -17,14 +17,10 @@ import org.springframework.context.annotation.Configuration;
  * para poder pegar el access token en el candado y probar endpoints
  * @PreAuthorize desde la UI.
  *
- * SecurityConfig (com.cafepos.core.shared.seguridad) y TenantFilter
- * (com.cafepos.core.shared.tenant) ya existen y hacen su parte de esto:
- * permitAll de Swagger solo en @Profile("dev"), y aceptación del header
- * X-Tenant-Slug solo en dev. Pero NO hay login/JWT todavía, así que ningún
- * endpoint fuera de Swagger es alcanzable (siempre 401) — ver Javadoc de
- * SecurityConfig. Y TenantFilter solo resuelve el slug, no lo convierte en
- * tenant_id ni aplica el SET LOCAL que activa Row-Level Security — ver su
- * Javadoc para el detalle de qué falta.
+ * Flujo para probar desde acá: resolver tenant con X-Tenant-Slug (dev), POST
+ * /auth/login con las credenciales del negocio de prueba, pegar el
+ * accessToken en el candado (sin el prefijo "Bearer ") — ver
+ * com.cafepos.core.shared.seguridad.SecurityConfig y AuthController.
  */
 @Configuration
 public class OpenApiConfig {
@@ -54,8 +50,8 @@ public class OpenApiConfig {
     /**
      * Agrega "X-Tenant-Slug" como header documentado (opcional) en todas las
      * operaciones, para que quien prueba la API en Swagger UI sepa que
-     * existe. Puramente documentación — ver PENDIENTE #2 en la Javadoc de
-     * la clase para la implementación real en TenantFilter.
+     * existe. Puramente documentación — la resolución real está en
+     * com.cafepos.core.shared.tenant.TenantFilter.
      */
     @Bean
     public OpenApiCustomizer tenantSlugHeaderCustomizer() {

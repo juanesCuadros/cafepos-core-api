@@ -1,5 +1,6 @@
 package com.cafepos.admin.auth.infrastructure.security;
 
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,5 +50,27 @@ public class JwtService {
 
     public long accessTokenTtlSeconds() {
         return accessTokenTtl.toSeconds();
+    }
+
+    /**
+     * Valida firma, issuer y audience, y devuelve el superadmin_id (via
+     * "sub", no del claim custom — evita depender de como Jackson deserializa
+     * el tipo numerico del claim). Lanza JwtException si el token no es
+     * valido por cualquier motivo (firma, expiracion, issuer/audience).
+     */
+    public Integer parseSuperadminId(String token) {
+        String subject = Jwts.parser()
+                .verifyWith(signingKey)
+                .requireIssuer(issuer)
+                .requireAudience(audience)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
+        try {
+            return Integer.valueOf(subject);
+        } catch (NumberFormatException e) {
+            throw new JwtException("Claim 'sub' invalido: " + subject, e);
+        }
     }
 }
