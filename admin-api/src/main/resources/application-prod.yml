@@ -1,0 +1,5 @@
+# Perfil de produccion. Vacio a proposito: application.yml ya trae los
+# defaults correctos para produccion (swagger deshabilitado, ddl-auto
+# validate, sin overrides de dev). Este archivo existe para que
+# SPRING_PROFILES_ACTIVE=prod sea explicito y quede un lugar documentado
+# si en el futuro hace falta un override especifico de produccion.

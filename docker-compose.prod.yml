@@ -1,0 +1,59 @@
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: cafepos-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPERUSER}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - cafepos_pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  core-api:
+    build: ./core-api
+    container_name: cafepos-core-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${CORE_API_SPRING_PROFILES_ACTIVE}
+      # Conexion de runtime — rol app_tenant, sin BYPASSRLS
+      SPRING_DATASOURCE_URL: ${CORE_API_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${CORE_API_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${CORE_API_DATASOURCE_PASSWORD}
+      # Conexion separada para Flyway — superusuario, mismo patron que
+      # application-dev.yml (ver spring.flyway.* en core-api)
+      SPRING_FLYWAY_URL: ${CORE_API_FLYWAY_URL}
+      SPRING_FLYWAY_USER: ${CORE_API_FLYWAY_USER}
+      SPRING_FLYWAY_PASSWORD: ${CORE_API_FLYWAY_PASSWORD}
+      CAFEPOS_CORE_JWT_SIGNING_KEY: ${CAFEPOS_CORE_JWT_SIGNING_KEY}
+
+  admin-api:
+    build: ./admin-api
+    container_name: cafepos-admin-api
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${ADMIN_API_SPRING_PROFILES_ACTIVE}
+      # Conexion de runtime — rol app_platform, BYPASSRLS
+      SPRING_DATASOURCE_URL: ${ADMIN_API_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${ADMIN_API_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${ADMIN_API_DATASOURCE_PASSWORD}
+      CAFEPOS_ADMIN_JWT_SIGNING_KEY: ${CAFEPOS_ADMIN_JWT_SIGNING_KEY}
+
+volumes:
+  cafepos_pgdata_prod:

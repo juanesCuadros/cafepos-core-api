@@ -5,8 +5,7 @@ COPY mvnw pom.xml ./
 COPY .mvn .mvn
 RUN ./mvnw dependency:go-offline -q
 COPY src src
-# Sin -DskipTests a proposito: incluye ModularityTests, gate obligatorio
-# antes de construir la imagen. Si un test falla, el build de Docker falla.
+# Sin -DskipTests a proposito: si un test falla, el build de Docker falla.
 RUN ./mvnw package -q
 
 # Stage 2: runtime
@@ -17,5 +16,5 @@ WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
 RUN chown cafepos:cafepos app.jar
 USER cafepos
-EXPOSE 8080
+EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "app.jar"]
