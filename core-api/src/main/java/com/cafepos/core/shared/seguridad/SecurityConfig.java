@@ -15,6 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 
 /**
  * Config de Spring Security:
@@ -40,6 +41,7 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
  * tenant del request ya esta resuelto.
  */
 @Configuration
+@EnableWebSecurity
 public class SecurityConfig {
 
     /**
