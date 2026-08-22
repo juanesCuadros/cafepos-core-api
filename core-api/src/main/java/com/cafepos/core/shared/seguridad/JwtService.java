@@ -23,6 +23,9 @@ public class JwtService {
 
     private static final String CLAIM_TENANT_ID = "tenant_id";
     private static final String CLAIM_ROL_ID = "rol_id";
+    private static final String CLAIM_NOMBRE = "nombre";
+    private static final String CLAIM_CORREO = "correo";
+    private static final String CLAIM_ROL = "rol";
     private static final String CLAIM_DEBE_CAMBIAR_PASSWORD = "debe_cambiar_password";
 
     private final SecretKey signingKey;
@@ -46,6 +49,9 @@ public class JwtService {
                 .subject(usuario.getId().toString())
                 .claim(CLAIM_TENANT_ID, usuario.getTenantId())
                 .claim(CLAIM_ROL_ID, usuario.getRolId())
+                .claim(CLAIM_NOMBRE, usuario.getNombre())
+                .claim(CLAIM_CORREO, usuario.getCorreo())
+                .claim(CLAIM_ROL, usuario.getRol().getNombre())
                 .claim(CLAIM_DEBE_CAMBIAR_PASSWORD, usuario.isDebeCambiarPassword())
                 .issuer(issuer)
                 .audience().add(audience).and()
@@ -84,5 +90,17 @@ public class JwtService {
 
     public boolean debeCambiarPassword(Claims claims) {
         return Boolean.TRUE.equals(claims.get(CLAIM_DEBE_CAMBIAR_PASSWORD, Boolean.class));
+    }
+
+    public String nombre(Claims claims) {
+        return claims.get(CLAIM_NOMBRE, String.class);
+    }
+
+    public String correo(Claims claims) {
+        return claims.get(CLAIM_CORREO, String.class);
+    }
+
+    public String rol(Claims claims) {
+        return claims.get(CLAIM_ROL, String.class);
     }
 }
