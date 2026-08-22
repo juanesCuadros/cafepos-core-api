@@ -16,6 +16,11 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.List;
+
 
 /**
  * Config de Spring Security:
@@ -44,12 +49,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 @EnableWebSecurity
 public class SecurityConfig {
 
-    /**
-     * AntPathRequestMatcher a propósito, no securityMatcher(String...) /
-     * requestMatchers(String...): esas variantes resuelven a MvcRequestMatcher
-     * cuando Spring MVC está en el classpath, lo que fuerza la creación
-     * temprana de mvcHandlerMappingIntrospector -> resourceHandlerMapping.
-     */
     private static final RequestMatcher SWAGGER_MATCHER = new OrRequestMatcher(
             new AntPathRequestMatcher("/swagger-ui/**"),
             new AntPathRequestMatcher("/swagger-ui.html"),
@@ -71,11 +70,12 @@ public class SecurityConfig {
     @Bean
     @Order(2)
     public SecurityFilterChain apiFilterChain(HttpSecurity http, JwtService jwtService,
-                                               FilterErrorWriter filterErrorWriter) throws Exception {
+                                              FilterErrorWriter filterErrorWriter) throws Exception {
         JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtService);
         DebeCambiarPasswordFilter debeCambiarPasswordFilter = new DebeCambiarPasswordFilter(filterErrorWriter);
 
-        http.authorizeHttpRequests(auth -> auth
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
                         .requestMatchers(RutasAuth.LOGIN, RutasAuth.REFRESH, RutasAuth.LOGOUT).permitAll()
                         .anyRequest().authenticated())
                 .csrf(AbstractHttpConfigurer::disable)
@@ -83,6 +83,19 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(debeCambiarPasswordFilter, JwtAuthenticationFilter.class);
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOriginPatterns(List.of("https://*.resttodash.app"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Tenant-Slug"));
+        config.setExposedHeaders(List.of("Authorization"));
+        config.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 
     @Bean
