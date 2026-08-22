@@ -5,6 +5,7 @@
  *   - auditoria: aspecto @Auditable, publicación a evento_auditoria.
  *   - excepciones: manejo global de errores, respuestas consistentes.
  *   - openapi: configuración de Swagger UI / OpenAPI (solo documentación/testing).
+ *   - jackson: JsonNullableModule global (patrón JsonNullable&lt;T&gt; en DTOs de PATCH).
  *
  * Declarado como módulo OPEN: cualquier otro módulo puede depender
  * libremente de sus clases, sin las restricciones de encapsulación que

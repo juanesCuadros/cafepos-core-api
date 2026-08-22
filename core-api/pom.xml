@@ -48,6 +48,7 @@
              lo corrija (revisar github.com/springdoc/springdoc-openapi
              issues #3145 / #3210). -->
         <springdoc.version>2.8.14</springdoc.version>
+        <jackson-databind-nullable.version>0.2.6</jackson-databind-nullable.version>
     </properties>
 
     <dependencyManagement>
@@ -172,6 +173,15 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <!-- JsonNullable<T>: distingue "campo ausente" de "campo enviado en
+                 null" en un PATCH, algo que Java plano no puede expresar (ver
+                 com.cafepos.core.shared.jackson.JacksonConfig y la regla en
+                 CLAUDE.md sobre DTOs de PATCH). -->
+            <groupId>org.openapitools</groupId>
+            <artifactId>jackson-databind-nullable</artifactId>
+            <version>${jackson-databind-nullable.version}</version>
         </dependency>
 
         <!-- Test -->

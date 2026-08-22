@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.openapitools.jackson.nullable.JsonNullable;
 
 /** Mapea categoria (ver V1__schema_v4.sql, Modulo 4.2 de api_04_productos_menu.md). */
 @Entity
@@ -52,16 +53,21 @@ public class Categoria {
         this.estado = estado != null ? estado : ESTADO_ACTIVA;
     }
 
-    /** Actualizacion parcial (PATCH) — un campo en null significa "no tocar", nunca "borrar". */
-    public void actualizar(String icono, String nombre, String descripcion, Integer orden, String estado) {
+    /**
+     * Actualizacion parcial (PATCH) — un campo en null significa "no tocar",
+     * salvo descripcion (JsonNullable): ausente = no tocar, presente (aunque
+     * sea con valor null) = aplicar, incluso para borrar el campo.
+     */
+    public void actualizar(String icono, String nombre, JsonNullable<String> descripcion, Integer orden,
+                            String estado) {
         if (icono != null) {
             this.icono = icono;
         }
         if (nombre != null) {
             this.nombre = nombre;
         }
-        if (descripcion != null) {
-            this.descripcion = descripcion;
+        if (descripcion.isPresent()) {
+            this.descripcion = descripcion.get();
         }
         if (orden != null) {
             this.orden = orden;

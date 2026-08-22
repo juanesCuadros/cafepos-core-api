@@ -66,6 +66,35 @@ reglas del proyecto que no deben repetirse en cada prompt.
   específico escribe datos, anotalo igual con `@Transactional` (sin
   `readOnly`) para que quede explícito.
 
+## DTOs de PATCH (regla obligatoria)
+
+- **Todo campo genuinamente nullable de negocio en un DTO de PATCH debe usar
+  `JsonNullable<T>` (`org.openapitools.jackson.nullable`), nunca el tipo
+  plano.** Java plano no distingue "el campo no vino en el JSON" de "el
+  campo vino en el JSON con valor `null`" — con el tipo plano ambos casos
+  llegan igual (`null`), asi que no hay forma de "borrar" un campo nullable
+  que ya tiene valor via PATCH sin tambien reescribirlo por accidente cuando
+  el cliente simplemente no menciona el campo.
+- El modulo Jackson (`JsonNullableModule`) que habilita esto ya esta
+  registrado globalmente como bean en
+  `com.cafepos.core.shared.jackson.JacksonConfig` — no hace falta
+  configuracion extra por DTO, alcanza con declarar el campo como
+  `JsonNullable<T>` en el record.
+- En el metodo que aplica el PATCH (service o entidad de dominio, segun
+  donde viva la logica de "actualizar parcial" de ese modulo), el chequeo
+  pasa de `if (campo != null) { entity.campo = campo; }` a
+  `if (campo.isPresent()) { entity.campo = campo.get(); }` — `get()` puede
+  devolver `null`, y eso es correcto: significa que el borrado fue explicito.
+- Los campos obligatorios del recurso (los que no aceptan `null` como valor
+  valido — ej. `nombre`, `precio_venta`, `estado`, `tipo_descuento`) NO
+  necesitan este tratamiento: se quedan con el tipo plano y sin este patron,
+  un `null` explicito ahi sigue siendo candidato a error de validacion, no
+  una accion de "borrar".
+- Ejemplo ya aplicado en produccion en `productosmenu` (Categoria, Producto,
+  Promocion): ver `CategoriaActualizarRequest`, `ProductoActualizarRequest`,
+  `PromocionActualizarRequest` y sus respectivos `actualizar(...)` en
+  `application`/`domain`.
+
 ## Arquitectura del proyecto
 
 - Monolito modular con **Spring Modulith** — 12 módulos de negocio, cada uno

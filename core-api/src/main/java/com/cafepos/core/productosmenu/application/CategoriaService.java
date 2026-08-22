@@ -6,6 +6,7 @@ import com.cafepos.core.productosmenu.domain.CategoriaNoEncontradaException;
 import com.cafepos.core.productosmenu.domain.CategoriaRepository;
 import com.cafepos.core.productosmenu.domain.CategoriaResumen;
 import com.cafepos.core.shared.tenant.TenantContext;
+import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +34,7 @@ public class CategoriaService {
     }
 
     @Transactional
-    public Categoria actualizar(Integer id, String icono, String nombre, String descripcion,
+    public Categoria actualizar(Integer id, String icono, String nombre, JsonNullable<String> descripcion,
                                  Integer orden, String estado) {
         Categoria categoria = categoriaRepository.buscarPorId(id)
                 .orElseThrow(CategoriaNoEncontradaException::new);
