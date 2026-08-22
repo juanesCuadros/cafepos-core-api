@@ -2,6 +2,7 @@ package com.cafepos.core;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 
 /**
  * Punto de entrada de core-api.
@@ -13,7 +14,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * DIAN) son proyectos Maven separados, con su propio ciclo de vida —
  * ver cafepos_arquitectura_backend_v1.md, sección 1.
  */
-@SpringBootApplication
+@SpringBootApplication(exclude = {UserDetailsServiceAutoConfiguration.class})
 public class CoreApiApplication {
 
     public static void main(String[] args) {
