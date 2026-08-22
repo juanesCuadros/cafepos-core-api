@@ -18,12 +18,13 @@ import java.io.IOException;
 import java.time.Duration;
 
 /**
- * Aplica a TODAS las rutas autenticadas (no /auth/login ni /auth/refresh —
- * ese chequeo lo hace LoginService, ver su Javadoc; refresh no lo necesita,
- * un tenant suspendido igual puede/debe poder rotar hacia un login nuevo):
- * si tenants.estado es 'suspendido' o 'cancelado', rechaza con el mismo
- * mensaje distinto que usa el login — postura de lockout total, sin modo
- * degradado.
+ * Aplica a TODAS las rutas autenticadas (no /auth/login, /auth/refresh ni
+ * /auth/logout — ese chequeo lo hace LoginService, ver su Javadoc; refresh
+ * no lo necesita, un tenant suspendido igual puede/debe poder rotar hacia
+ * un login nuevo; logout tampoco, un tenant suspendido igual debe poder
+ * cerrar su propia sesion): si tenants.estado es 'suspendido' o
+ * 'cancelado', rechaza con el mismo mensaje distinto que usa el login —
+ * postura de lockout total, sin modo degradado.
  *
  * Cache Caffeine corta (TTL 2 min) por tenant_id: no vale la pena pagar una
  * query a "tenants" en cada request de cada tenant activo solo para
@@ -49,15 +50,17 @@ public class SuscripcionFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                      FilterChain filterChain) throws ServletException, IOException {
         Integer tenantId = TenantContext.getCurrentTenantId();
-        String path = request.getRequestURI();
-        if (tenantId == null || RutasAuth.LOGIN.equals(path) || RutasAuth.REFRESH.equals(path)) {
+        String path = request.getServletPath();
+        if (tenantId == null || RutasAuth.LOGIN.equals(path) || RutasAuth.REFRESH.equals(path)
+                || RutasAuth.LOGOUT.equals(path)) {
             filterChain.doFilter(request, response);
             return;
         }
 
         Tenant tenant = estadoCache.get(tenantId, id -> tenantRepository.findById(id).orElse(null));
         if (tenant != null && tenant.estaSuspendidoOCancelado()) {
-            filterErrorWriter.escribir(response, HttpStatus.FORBIDDEN.value(), tenant.mensajeBloqueo());
+            filterErrorWriter.escribir(response, HttpStatus.FORBIDDEN.value(), tenant.mensajeBloqueo(),
+                    TenantSuspendidoException.CODIGO);
             return;
         }
         filterChain.doFilter(request, response);

@@ -2,6 +2,11 @@ spring:
   application:
     name: cafepos-core-api
 
+  # snake_case en TODO el JSON de entrada y salida (contrato de API del
+  # equipo) — aplica a nivel global, ningun DTO necesita @JsonProperty a mano.
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
   # JPA/Hibernate — el DDL SIEMPRE lo maneja Flyway, nunca Hibernate.
   # (ddl-auto=validate: Hibernate solo confirma que las entidades coinciden
   # con el schema que Flyway ya aplicó; nunca crea/modifica tablas)
@@ -32,6 +37,14 @@ spring:
 
 server:
   port: 8080
+  servlet:
+    # Prefijo de contrato de API de core-api. AntPathRequestMatcher (Spring
+    # Security) y HttpServletRequest#getServletPath() ya excluyen el
+    # context-path automaticamente — por eso RutasAuth y los filtros que
+    # comparan contra el path no necesitan tocar este prefijo. Afecta
+    # tambien a Swagger/actuator (quedan bajo /api/v1); no forman parte del
+    # contrato de negocio asi que no es un problema.
+    context-path: /api/v1
 
 management:
   endpoints:
@@ -68,7 +81,7 @@ cafepos:
     audience: cafepos-core-api
     access-token-ttl-minutes: 15
   refresh-token:
-    ttl-days: 30
+    ttl-hours: 24
   pin-authorization:
     token-ttl-minutes: 2
   tenant:

@@ -1,0 +1,22 @@
+-- ============================================================================
+-- CaféPOS — Migracion V12
+-- Otorga a app_tenant SELECT sobre permiso, que faltaba por completo.
+--
+-- Contexto: mismo bug que V8 (tenants) y V11 (rol) — V1 solo otorga
+-- privilegios sobre tablas CON columna tenant_id (bucle en
+-- information_schema.columns). "permiso" es catalogo global (modulo+accion
+-- disponibles en todo el sistema, sin tenant_id), asi que quedo fuera de
+-- ese bucle. V5/V7 le dieron SELECT a app_platform (admin-api, matriz de
+-- permisos) pero nunca a app_tenant.
+--
+-- El RBAC dinamico de core-api (PermissionEvaluator, hasPermission('modulo.
+-- subvista', 'accion')) necesita resolver (modulo, accion) -> permiso_id
+-- contra esta tabla antes de poder chequear rol_permiso (que si tiene
+-- tenant_id y ya esta otorgada) — sin este GRANT, @PreAuthorize fallaria
+-- con el mismo "permission denied for table" que se vio con rol.
+--
+-- Solo SELECT: el catalogo de permisos es fijo y editable unicamente vía
+-- admin-api (rol app_platform) — core-api solo lee.
+-- ============================================================================
+
+GRANT SELECT ON permiso TO app_tenant;

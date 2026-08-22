@@ -19,11 +19,14 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 /**
  * Config de Spring Security:
  *   1. Swagger UI / OpenAPI SIN autenticación, ÚNICAMENTE en perfil "dev".
- *   2. /auth/login y /auth/refresh publicos (permitAll) — son el punto de
- *      entrada, todavia no hay JWT que validar. /auth/cambiar-password-inicial
- *      NO esta en esta lista: exige JWT valido, igual que cualquier otro
- *      endpoint (ver DebeCambiarPasswordFilter para la logica de que sea el
- *      UNICO alcanzable mientras el flag siga en true).
+ *   2. /auth/login, /auth/refresh y /auth/logout publicos (permitAll) — ninguno
+ *      de los tres depende de un access token valido (login todavia no tiene
+ *      uno; refresh y logout operan solo sobre el refresh token opaco, que
+ *      puede seguir vigente aunque el access token ya haya expirado).
+ *      /auth/cambiar-password-inicial NO esta en esta lista: exige JWT
+ *      valido, igual que cualquier otro endpoint (ver DebeCambiarPasswordFilter
+ *      para la logica de que sea el UNICO alcanzable mientras el flag siga
+ *      en true).
  *   3. Todo lo demas exige JWT valido (anyRequest().authenticated()).
  *
  * Orden de filtros dentro de la chain autenticada — JwtAuthenticationFilter
@@ -71,7 +74,7 @@ public class SecurityConfig {
         DebeCambiarPasswordFilter debeCambiarPasswordFilter = new DebeCambiarPasswordFilter(filterErrorWriter);
 
         http.authorizeHttpRequests(auth -> auth
-                        .requestMatchers(RutasAuth.LOGIN, RutasAuth.REFRESH).permitAll()
+                        .requestMatchers(RutasAuth.LOGIN, RutasAuth.REFRESH, RutasAuth.LOGOUT).permitAll()
                         .anyRequest().authenticated())
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

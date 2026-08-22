@@ -19,13 +19,16 @@ public class AuthController {
 
     private final LoginService loginService;
     private final RefreshTokenService refreshTokenService;
+    private final LogoutService logoutService;
     private final CambiarPasswordInicialService cambiarPasswordInicialService;
 
     public AuthController(LoginService loginService,
                            RefreshTokenService refreshTokenService,
+                           LogoutService logoutService,
                            CambiarPasswordInicialService cambiarPasswordInicialService) {
         this.loginService = loginService;
         this.refreshTokenService = refreshTokenService;
+        this.logoutService = logoutService;
         this.cambiarPasswordInicialService = cambiarPasswordInicialService;
     }
 
@@ -67,6 +70,22 @@ public class AuthController {
     })
     public TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
         return TokenResponse.de(refreshTokenService.ejecutar(request.refreshToken()));
+    }
+
+    @PostMapping("/logout")
+    @Operation(
+            summary = "Cierra la sesion actual",
+            description = "Revoca el refresh token recibido — a partir de este punto, ya no sirve para "
+                    + "/auth/refresh. Idempotente a proposito: si el token no existe o ya estaba "
+                    + "revocado, igual responde 200 (no hay razon para revelar el estado interno de un "
+                    + "token que de cualquier forma ya no sirve).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Sesion cerrada (siempre, sin importar el estado previo del token)"),
+            @ApiResponse(responseCode = "400", description = "Falta el refresh token en el body")
+    })
+    public LogoutResponse logout(@Valid @RequestBody RefreshRequest request) {
+        logoutService.ejecutar(request.refreshToken());
+        return LogoutResponse.SESION_CERRADA;
     }
 
     @PostMapping("/cambiar-password-inicial")

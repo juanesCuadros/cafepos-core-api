@@ -9,10 +9,11 @@ import java.io.IOException;
 
 /**
  * Escribe una respuesta de error con la misma forma que GlobalExceptionHandler
- * (ErrorResponse), para los filtros que rechazan un request ANTES de que
- * DispatcherServlet lo reciba (TenantFilter, SuscripcionFilter,
- * DebeCambiarPasswordFilter) — @RestControllerAdvice no los alcanza porque
- * corren fuera del ciclo de manejo de excepciones de Spring MVC.
+ * (ErrorResponse / ErrorConCodigoResponse), para los filtros que rechazan un
+ * request ANTES de que DispatcherServlet lo reciba (TenantFilter,
+ * SuscripcionFilter, DebeCambiarPasswordFilter) — @RestControllerAdvice no
+ * los alcanza porque corren fuera del ciclo de manejo de excepciones de
+ * Spring MVC.
  */
 @Component
 public class FilterErrorWriter {
@@ -24,9 +25,17 @@ public class FilterErrorWriter {
     }
 
     public void escribir(HttpServletResponse response, int status, String mensaje) throws IOException {
+        escribirJson(response, status, new ErrorResponse(mensaje));
+    }
+
+    public void escribir(HttpServletResponse response, int status, String mensaje, String codigo) throws IOException {
+        escribirJson(response, status, new ErrorConCodigoResponse(mensaje, codigo));
+    }
+
+    private void escribirJson(HttpServletResponse response, int status, Object body) throws IOException {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        response.getWriter().write(objectMapper.writeValueAsString(new ErrorResponse(mensaje)));
+        response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 }

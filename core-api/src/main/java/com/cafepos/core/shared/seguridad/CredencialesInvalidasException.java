@@ -7,6 +7,8 @@ package com.cafepos.core.shared.seguridad;
  */
 public class CredencialesInvalidasException extends RuntimeException {
 
+    public static final String CODIGO = "CREDENCIALES_INVALIDAS";
+
     public CredencialesInvalidasException() {
         super("Correo o contraseña incorrectos");
     }

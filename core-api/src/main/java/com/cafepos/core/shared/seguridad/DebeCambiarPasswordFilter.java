@@ -25,6 +25,8 @@ import java.io.IOException;
  */
 public class DebeCambiarPasswordFilter extends OncePerRequestFilter {
 
+    private static final String CODIGO_DEBE_CAMBIAR_PASSWORD = "DEBE_CAMBIAR_PASSWORD";
+
     private final FilterErrorWriter filterErrorWriter;
 
     public DebeCambiarPasswordFilter(FilterErrorWriter filterErrorWriter) {
@@ -37,9 +39,9 @@ public class DebeCambiarPasswordFilter extends OncePerRequestFilter {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUsuario usuario
                 && usuario.debeCambiarPassword()
-                && !RutasAuth.CAMBIAR_PASSWORD_INICIAL.equals(request.getRequestURI())) {
+                && !RutasAuth.CAMBIAR_PASSWORD_INICIAL.equals(request.getServletPath())) {
             filterErrorWriter.escribir(response, HttpStatus.FORBIDDEN.value(),
-                    "Debes cambiar tu contraseña temporal antes de continuar");
+                    "Debes cambiar tu contraseña temporal antes de continuar", CODIGO_DEBE_CAMBIAR_PASSWORD);
             return;
         }
         filterChain.doFilter(request, response);

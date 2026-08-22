@@ -15,25 +15,30 @@ public class TokenPairIssuer {
     private final UsuarioRefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
     private final RefreshTokenIssuer refreshTokenIssuer;
-    private final long refreshTokenTtlDays;
+    private final RolRepository rolRepository;
+    private final long refreshTokenTtlHours;
 
     public TokenPairIssuer(UsuarioRefreshTokenRepository refreshTokenRepository,
                             JwtService jwtService,
                             RefreshTokenIssuer refreshTokenIssuer,
-                            @Value("${cafepos.refresh-token.ttl-days}") long refreshTokenTtlDays) {
+                            RolRepository rolRepository,
+                            @Value("${cafepos.refresh-token.ttl-hours}") long refreshTokenTtlHours) {
         this.refreshTokenRepository = refreshTokenRepository;
         this.jwtService = jwtService;
         this.refreshTokenIssuer = refreshTokenIssuer;
-        this.refreshTokenTtlDays = refreshTokenTtlDays;
+        this.rolRepository = rolRepository;
+        this.refreshTokenTtlHours = refreshTokenTtlHours;
     }
 
     public TokenPair emitir(Usuario usuario) {
         RefreshTokenIssuer.Emitido emitido = refreshTokenIssuer.generar();
-        OffsetDateTime expiraEn = OffsetDateTime.now().plusDays(refreshTokenTtlDays);
+        OffsetDateTime expiraEn = OffsetDateTime.now().plusHours(refreshTokenTtlHours);
         refreshTokenRepository.save(new UsuarioRefreshToken(
                 usuario.getTenantId(), usuario.getId(), emitido.hash(), expiraEn));
         String accessToken = jwtService.issueAccessToken(usuario);
-        return new TokenPair(accessToken, emitido.rawToken(), jwtService.accessTokenTtlSeconds(),
-                usuario.isDebeCambiarPassword());
+        String rolNombre = rolRepository.getReferenceById(usuario.getRolId()).getNombre();
+        UsuarioResponse usuarioResponse = new UsuarioResponse(
+                usuario.getId(), usuario.getNombre(), usuario.getCorreo(), rolNombre, usuario.getTenantId());
+        return new TokenPair(accessToken, emitido.rawToken(), usuarioResponse, usuario.isDebeCambiarPassword());
     }
 }

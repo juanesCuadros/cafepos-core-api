@@ -55,10 +55,6 @@ public class JwtService {
                 .compact();
     }
 
-    public long accessTokenTtlSeconds() {
-        return accessTokenTtl.toSeconds();
-    }
-
     /** Lanza JwtException si el token no es valido por cualquier motivo (firma, expiracion, issuer/audience). */
     public Claims parseClaims(String token) {
         return Jwts.parser()

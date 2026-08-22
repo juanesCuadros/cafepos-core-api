@@ -1,6 +1,7 @@
 package com.cafepos.core.shared.excepciones;
 
 import com.cafepos.core.shared.seguridad.CredencialesInvalidasException;
+import com.cafepos.core.shared.seguridad.CuentaBloqueadaException;
 import com.cafepos.core.shared.seguridad.PasswordActualIncorrectaException;
 import com.cafepos.core.shared.seguridad.RefreshTokenInvalidoException;
 import com.cafepos.core.shared.tenant.TenantNoEncontradoException;
@@ -16,13 +17,20 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(CredencialesInvalidasException.class)
-    public ResponseEntity<ErrorResponse> handleCredencialesInvalidas(CredencialesInvalidasException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(ex.getMessage()));
+    public ResponseEntity<ErrorConCodigoResponse> handleCredencialesInvalidas(CredencialesInvalidasException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorConCodigoResponse(ex.getMessage(), CredencialesInvalidasException.CODIGO));
     }
 
     @ExceptionHandler(PasswordActualIncorrectaException.class)
     public ResponseEntity<ErrorResponse> handlePasswordActualIncorrecta(PasswordActualIncorrectaException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(CuentaBloqueadaException.class)
+    public ResponseEntity<ErrorConCodigoResponse> handleCuentaBloqueada(CuentaBloqueadaException ex) {
+        return ResponseEntity.status(HttpStatus.LOCKED)
+                .body(new ErrorConCodigoResponse(ex.getMessage(), CuentaBloqueadaException.CODIGO));
     }
 
     @ExceptionHandler(RefreshTokenInvalidoException.class)
@@ -31,8 +39,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(TenantSuspendidoException.class)
-    public ResponseEntity<ErrorResponse> handleTenantSuspendido(TenantSuspendidoException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(ex.getMessage()));
+    public ResponseEntity<ErrorConCodigoResponse> handleTenantSuspendido(TenantSuspendidoException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorConCodigoResponse(ex.getMessage(), TenantSuspendidoException.CODIGO));
     }
 
     @ExceptionHandler(TenantNoEncontradoException.class)

@@ -9,6 +9,7 @@ public final class RutasAuth {
 
     public static final String LOGIN = "/auth/login";
     public static final String REFRESH = "/auth/refresh";
+    public static final String LOGOUT = "/auth/logout";
     public static final String CAMBIAR_PASSWORD_INICIAL = "/auth/cambiar-password-inicial";
 
     private RutasAuth() {
