@@ -82,11 +82,9 @@ public class TenantFilter extends OncePerRequestFilter {
     }
 
     private String resolveSlug(HttpServletRequest request) {
-        if (environment.acceptsProfiles(Profiles.of(DEV_PROFILE))) {
-            String header = request.getHeader(TENANT_SLUG_HEADER);
-            if (header != null && !header.isBlank()) {
-                return header.trim();
-            }
+        String header = request.getHeader(TENANT_SLUG_HEADER);
+        if (header != null && !header.isBlank()) {
+            return header.trim();
         }
         return resolveSlugFromHost(request.getServerName());
     }
