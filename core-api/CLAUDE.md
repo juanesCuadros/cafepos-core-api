@@ -42,6 +42,30 @@ reglas del proyecto que no deben repetirse en cada prompt.
   `update` o `create` — el schema real vive únicamente en las migraciones
   Flyway, Hibernate solo confirma que las entidades coinciden con él.
 
+## Repositorios JPA (regla crítica, no negociable)
+
+- **Todo repositorio de Spring Data JPA debe extender `TenantAwareRepository<T, ID>`
+  (`shared.tenant`), nunca `JpaRepository<T, ID>` directamente.**
+- Motivo: un método de repositorio que vos declarás (derivado por nombre o
+  `@Query`) **no** hereda transacción automáticamente como sí lo hacen los
+  métodos heredados de `SimpleJpaRepository` (`findById`, `save`, ...). Sin
+  una transacción propia, `TenantAwareJpaTransactionManager` nunca ejecuta
+  el `SET LOCAL app.current_tenant_id` que activa Row-Level Security —
+  cualquier query contra una tabla con columna `tenant_id` puede fallar con
+  un error crudo de Postgres (`invalid input syntax for type integer`), o en
+  el peor caso devolver datos de otro tenant si la conexión pooled trae un
+  valor viejo de una transacción anterior.
+- No es un problema de configuración corregible con una property (no hay
+  dos `PlatformTransactionManager` compitiendo — solo existe uno) ni algo
+  que dependa de `enableDefaultTransactions`: es cómo Spring Data resuelve
+  la transacción de un método sin una clase de implementación real detrás
+  (confirmado leyendo el bytecode de `TransactionalRepositoryProxyPostProcessor`
+  en `spring-data-commons`). `TenantAwareRepository` ya lleva
+  `@Transactional(readOnly = true)` a nivel de interfaz — alcanza con
+  extenderla, no hace falta anotar cada método a mano. Si un método
+  específico escribe datos, anotalo igual con `@Transactional` (sin
+  `readOnly`) para que quede explícito.
+
 ## Arquitectura del proyecto
 
 - Monolito modular con **Spring Modulith** — 12 módulos de negocio, cada uno

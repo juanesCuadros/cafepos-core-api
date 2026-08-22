@@ -1,10 +1,10 @@
 package com.cafepos.core.shared.seguridad;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.cafepos.core.shared.tenant.TenantAwareRepository;
 
 import java.util.Optional;
 
-public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
+public interface UsuarioRepository extends TenantAwareRepository<Usuario, Integer> {
 
     Optional<Usuario> findByTenantIdAndCorreo(Integer tenantId, String correo);
 }

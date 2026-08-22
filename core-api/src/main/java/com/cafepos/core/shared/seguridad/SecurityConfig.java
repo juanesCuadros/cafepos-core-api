@@ -1,10 +1,18 @@
 package com.cafepos.core.shared.seguridad;
 
 import com.cafepos.core.shared.excepciones.FilterErrorWriter;
+import com.cafepos.core.shared.tenant.SuscripcionFilter;
+import com.cafepos.core.shared.tenant.TenantFilter;
+import com.cafepos.core.shared.tenant.TenantRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.access.PermissionEvaluator;
+import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -35,18 +43,42 @@ import java.util.List;
  *      en true).
  *   3. Todo lo demas exige JWT valido (anyRequest().authenticated()).
  *
- * Orden de filtros dentro de la chain autenticada — JwtAuthenticationFilter
- * puebla el SecurityContext, DebeCambiarPasswordFilter lee ese resultado
- * (por eso addFilterAfter, nunca antes) para bloquear todo menos
- * /auth/cambiar-password-inicial mientras el flag este en true.
+ * Orden de filtros dentro de la chain autenticada, y por que:
  *
- * TenantFilter (com.cafepos.core.shared.tenant) corre ANTES de toda esta
- * chain (@Order en HIGHEST_PRECEDENCE, filtro de servlet plano, no
- * registrado aca) — para cuando se llega a JwtAuthenticationFilter, el
- * tenant del request ya esta resuelto.
+ *   1. JwtAuthenticationFilter — puebla el SecurityContext si el request
+ *      trae un JWT valido. Corre PRIMERO a proposito: todo lo que sigue
+ *      necesita saber si hay JWT valido o no antes de decidir nada.
+ *   2. TenantFilter (com.cafepos.core.shared.tenant) — resuelve el tenant.
+ *      Si JwtAuthenticationFilter ya autentico el request, el tenant_id
+ *      sale EXCLUSIVAMENTE del claim del JWT (X-Tenant-Slug ni se lee). Si
+ *      no hay JWT, resuelve por X-Tenant-Slug o subdominio. Por eso tiene
+ *      que correr DESPUES de JwtAuthenticationFilter — no puede saber cual
+ *      de las dos fuentes usar sin esa informacion.
+ *   3. SuscripcionFilter (com.cafepos.core.shared.tenant) — necesita
+ *      TenantContext ya resuelto por TenantFilter, por eso va justo
+ *      despues.
+ *   4. DebeCambiarPasswordFilter — lee el resultado de JwtAuthenticationFilter
+ *      (por eso addFilterAfter, nunca antes) para bloquear todo menos
+ *      /auth/cambiar-password-inicial mientras el flag este en true. No
+ *      depende de tenant, pero va al final por ser el ultimo gate antes
+ *      del controller.
+ *
+ * Ni TenantFilter ni SuscripcionFilter son @Component: si lo fueran, Spring
+ * Boot los registraria ADEMAS como filtros de servlet globales (aplicando a
+ * TODOS los requests, sin importar esta chain), duplicando su ejecucion y
+ * rompiendo el orden relativo a JwtAuthenticationFilter que este comentario
+ * describe. Se instancian a mano aca, igual que JwtAuthenticationFilter y
+ * DebeCambiarPasswordFilter.
+ *
+ * @EnableMethodSecurity + methodSecurityExpressionHandler() de mas abajo:
+ * habilita @PreAuthorize con hasPermission('modulo.subvista', 'accion') en
+ * cualquier controller de cualquier modulo, resuelto por PermisoEvaluator
+ * (RBAC dinamico, ver su Javadoc) en vez del PermissionEvaluator por
+ * defecto de Spring (que siempre deniega si no se lo reemplaza).
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private static final RequestMatcher SWAGGER_MATCHER = new OrRequestMatcher(
@@ -70,8 +102,12 @@ public class SecurityConfig {
     @Bean
     @Order(2)
     public SecurityFilterChain apiFilterChain(HttpSecurity http, JwtService jwtService,
-                                              FilterErrorWriter filterErrorWriter) throws Exception {
+                                              FilterErrorWriter filterErrorWriter,
+                                              TenantRepository tenantRepository,
+                                              @Value("${cafepos.tenant.base-domain}") String tenantBaseDomain) throws Exception {
         JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtService);
+        TenantFilter tenantFilter = new TenantFilter(tenantBaseDomain, tenantRepository, filterErrorWriter);
+        SuscripcionFilter suscripcionFilter = new SuscripcionFilter(tenantRepository, filterErrorWriter);
         DebeCambiarPasswordFilter debeCambiarPasswordFilter = new DebeCambiarPasswordFilter(filterErrorWriter);
 
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -81,7 +117,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(debeCambiarPasswordFilter, JwtAuthenticationFilter.class);
+                .addFilterAfter(tenantFilter, JwtAuthenticationFilter.class)
+                .addFilterAfter(suscripcionFilter, TenantFilter.class)
+                .addFilterAfter(debeCambiarPasswordFilter, SuscripcionFilter.class);
         return http.build();
     }
 
@@ -101,5 +139,12 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public MethodSecurityExpressionHandler methodSecurityExpressionHandler(PermissionEvaluator permisoEvaluator) {
+        DefaultMethodSecurityExpressionHandler handler = new DefaultMethodSecurityExpressionHandler();
+        handler.setPermissionEvaluator(permisoEvaluator);
+        return handler;
     }
 }

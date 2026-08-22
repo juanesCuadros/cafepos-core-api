@@ -1,10 +1,10 @@
 package com.cafepos.core.shared.seguridad;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.cafepos.core.shared.tenant.TenantAwareRepository;
 
 import java.util.Optional;
 
-public interface TenantRolConfigRepository extends JpaRepository<TenantRolConfig, Integer> {
+public interface TenantRolConfigRepository extends TenantAwareRepository<TenantRolConfig, Integer> {
 
     Optional<TenantRolConfig> findByTenantIdAndRolId(Integer tenantId, Integer rolId);
 }

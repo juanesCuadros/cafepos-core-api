@@ -1,6 +1,6 @@
 package com.cafepos.core.shared.seguridad;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.cafepos.core.shared.tenant.TenantAwareRepository;
 
-public interface EventoSeguridadRepository extends JpaRepository<EventoSeguridad, Long> {
+public interface EventoSeguridadRepository extends TenantAwareRepository<EventoSeguridad, Long> {
 }

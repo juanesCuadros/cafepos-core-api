@@ -8,20 +8,19 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** Mapea rol: catalogo global fijo de 5 roles (ver V1__schema_v4.sql). Solo lectura. */
+/** Mapea permiso: catalogo global de modulo+accion (ver V2__catalogo_permisos.sql). Solo lectura. */
 @Entity
-@Table(name = "rol")
+@Table(name = "permiso")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Rol {
+public class Permiso {
 
     @Id
     private Integer id;
 
     @Column(nullable = false)
-    private String nombre;
+    private String modulo;
 
-    /** false solo para Jefe — significa que su matriz de permisos no se puede editar. */
-    @Column(name = "es_editable", nullable = false)
-    private boolean esEditable;
+    @Column(nullable = false)
+    private String accion;
 }

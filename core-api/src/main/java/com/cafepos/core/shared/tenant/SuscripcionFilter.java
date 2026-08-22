@@ -8,10 +8,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -29,9 +26,11 @@ import java.time.Duration;
  * Cache Caffeine corta (TTL 2 min) por tenant_id: no vale la pena pagar una
  * query a "tenants" en cada request de cada tenant activo solo para
  * detectar el caso raro de una suspension a mitad de sesion.
+ *
+ * Corre DESPUES de TenantFilter dentro de la security chain (ver
+ * SecurityConfig, addFilterAfter) — necesita TenantContext ya resuelto,
+ * sin importar si vino del JWT o del header/subdominio.
  */
-@Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 20)
 public class SuscripcionFilter extends OncePerRequestFilter {
 
     private final TenantRepository tenantRepository;

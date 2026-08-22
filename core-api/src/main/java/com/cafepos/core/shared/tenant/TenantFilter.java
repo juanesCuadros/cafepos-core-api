@@ -1,17 +1,14 @@
 package com.cafepos.core.shared.tenant;
 
 import com.cafepos.core.shared.excepciones.FilterErrorWriter;
+import com.cafepos.core.shared.seguridad.AuthenticatedUsuario;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -20,39 +17,45 @@ import java.io.IOException;
  * Resuelve el tenant del request actual y lo deja disponible en
  * TenantContext (slug + id) mientras dura el request.
  *
- * Resolución del SLUG:
- *   1. Perfil "dev" + header "X-Tenant-Slug" presente -> se usa el header
- *      (para poder probar desde Swagger UI en localhost, sin subdominio).
- *   2. Cualquier otro caso -> se parsea el subdominio del Host contra
- *      cafepos.tenant.base-domain (ej. "demo.cafepos.com" -> "demo").
- * El header se IGNORA por completo fuera de perfil "dev".
+ * Corre DESPUES de JwtAuthenticationFilter dentro de la security chain (ver
+ * SecurityConfig, addFilterAfter) — eso es lo que permite la regla de abajo:
+ * para cuando este filtro se ejecuta, ya se sabe si el request trae un JWT
+ * valido o no.
  *
- * Si no se pudo resolver ningún slug (ej. Swagger UI estática, actuator,
- * host sin subdominio), el filtro simplemente no setea tenant_id y sigue —
- * eso no rompe nada que no requiera tenant. Si SÍ hay un slug pero no
- * corresponde a ningún tenant real, se rechaza aca mismo con 404: dejar
- * pasar el request con tenant_id=null haría que el primer "SET LOCAL"
+ * Dos fuentes de tenant, mutuamente excluyentes, nunca mezcladas:
+ *
+ *   1. Request CON JWT valido (JwtAuthenticationFilter ya dejo un
+ *      AuthenticatedUsuario en el SecurityContext): el tenant_id sale
+ *      EXCLUSIVAMENTE del claim tenant_id de ese JWT. El header
+ *      X-Tenant-Slug NO se lee en absoluto en este caso — ni se compara, ni
+ *      tiene ningun efecto. Un usuario autenticado de un tenant no puede
+ *      pisar su propio tenant mandando el header de otro.
+ *   2. Request SIN JWT (login, y cualquier otro endpoint publico que exista
+ *      o llegue a existir): el tenant se resuelve por X-Tenant-Slug si
+ *      viene presente, o por subdominio del Host si no. Esto aplica en
+ *      cualquier ambiente, no solo dev — no hay JWT del cual sacar nada
+ *      todavia, esta es la unica fuente posible aca.
+ *
+ * Si no se pudo resolver ningun slug en el caso 2 (ej. Swagger UI estatica,
+ * actuator, host sin subdominio), el filtro simplemente no setea tenant_id
+ * y sigue — eso no rompe nada que no requiera tenant. Si SI hay un slug
+ * pero no corresponde a ningun tenant real, se rechaza aca mismo con 404:
+ * dejar pasar el request con tenant_id=null haria que el primer "SET LOCAL"
  * (ver TenantAwareJpaTransactionManager) se saltee, y cualquier query a una
- * tabla con RLS activo fallaría con un error crudo de Postgres en vez de un
+ * tabla con RLS activo fallaria con un error crudo de Postgres en vez de un
  * error claro.
  */
-@Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class TenantFilter extends OncePerRequestFilter {
 
     private static final String TENANT_SLUG_HEADER = "X-Tenant-Slug";
-    private static final String DEV_PROFILE = "dev";
 
-    private final Environment environment;
     private final String baseDomain;
     private final TenantRepository tenantRepository;
     private final FilterErrorWriter filterErrorWriter;
 
-    public TenantFilter(Environment environment,
-                         @Value("${cafepos.tenant.base-domain}") String baseDomain,
+    public TenantFilter(String baseDomain,
                          TenantRepository tenantRepository,
                          FilterErrorWriter filterErrorWriter) {
-        this.environment = environment;
         this.baseDomain = baseDomain;
         this.tenantRepository = tenantRepository;
         this.filterErrorWriter = filterErrorWriter;
@@ -63,6 +66,13 @@ public class TenantFilter extends OncePerRequestFilter {
                                      HttpServletResponse response,
                                      FilterChain filterChain) throws ServletException, IOException {
         try {
+            Integer tenantIdDelJwt = tenantIdDeRequestAutenticado();
+            if (tenantIdDelJwt != null) {
+                TenantContext.setCurrentTenantId(tenantIdDelJwt);
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             String slug = resolveSlug(request);
             if (slug == null) {
                 filterChain.doFilter(request, response);
@@ -79,6 +89,14 @@ public class TenantFilter extends OncePerRequestFilter {
         } finally {
             TenantContext.clear();
         }
+    }
+
+    private Integer tenantIdDeRequestAutenticado() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUsuario usuario) {
+            return usuario.tenantId();
+        }
+        return null;
     }
 
     private String resolveSlug(HttpServletRequest request) {
