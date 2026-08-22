@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - dev
   workflow_dispatch:
 
 jobs:
@@ -18,13 +17,12 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            cd ${{ secrets.REPO_DIR }}
+            cd ~/resttodash/backend
             git fetch
-            git checkout ${{ github.ref_name }}
+            git checkout main
             git pull
-            cd ${{ secrets.COMPOSE_DIR }}
-            docker compose build backend
-            docker compose up -d backend
+            cd ~/resttodash
+            docker compose build --no-cache core-api admin-api
+            docker compose up -d core-api admin-api
