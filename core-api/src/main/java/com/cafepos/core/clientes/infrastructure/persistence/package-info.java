@@ -1,2 +1,2 @@
-/** Adaptador de persistencia JPA del módulo clientes — implementa los puertos definidos en domain. */
+/** Ver package-info.java del módulo para el contrato de comunicación entre módulos. */
 package com.cafepos.core.clientes.infrastructure.persistence;
