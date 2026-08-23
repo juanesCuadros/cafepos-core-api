@@ -65,6 +65,25 @@ reglas del proyecto que no deben repetirse en cada prompt.
   extenderla, no hace falta anotar cada método a mano. Si un método
   específico escribe datos, anotalo igual con `@Transactional` (sin
   `readOnly`) para que quede explícito.
+- **Proyección nativa (`@Query(nativeQuery = true)`) con columna
+  `TIMESTAMPTZ`: el getter debe declararse `Instant`, nunca
+  `OffsetDateTime`.** Una entidad `@Entity` completa sí convierte
+  automáticamente `TIMESTAMPTZ` → `OffsetDateTime` (pasa por los
+  conversores `java.time` de Hibernate), pero una interfaz de proyección
+  respaldada por una query nativa no pasa por esa maquinaria — Spring Data
+  la entrega tal cual la trae el driver JDBC (`Instant`) y no sabe
+  convertirla sola a `OffsetDateTime`. El error (`UnsupportedOperationException:
+  Cannot project java.time.Instant to java.time.OffsetDateTime`) **solo
+  aparece en runtime, nunca en compilación**, y encima puede aparecer
+  disfrazado de otra cosa en el cliente si la excepción sin manejar termina
+  cayendo en el `/error` interno de Spring Boot antes de tener un handler
+  (ver `GlobalExceptionHandler`, que ahora sí devuelve 500 real para
+  cualquier excepción no relacionada a autorización). Si la respuesta
+  necesita `OffsetDateTime`, convertir en el adapter con
+  `row.getFechaX().atOffset(ZoneOffset.UTC)` (coincide con
+  `hibernate.jdbc.time_zone: UTC`, ya usado en todo el proyecto). Un getter
+  `LocalDate` para una columna `DATE` no tiene este problema, solo aplica a
+  columnas con zona horaria.
 
 ## DTOs de PATCH (regla obligatoria)
 
