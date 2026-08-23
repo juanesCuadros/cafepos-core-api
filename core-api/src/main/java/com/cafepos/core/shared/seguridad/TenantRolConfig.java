@@ -26,4 +26,9 @@ public class TenantRolConfig {
 
     @Column(name = "minutos_inactividad", nullable = false)
     private int minutosInactividad;
+
+    /** PATCH /roles/{id}/tiempo-sesion (ver com.cafepos.core.configuracion, Modulo 11.3). */
+    public void actualizarMinutos(int minutosInactividad) {
+        this.minutosInactividad = minutosInactividad;
+    }
 }

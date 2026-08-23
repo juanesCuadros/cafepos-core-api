@@ -3,6 +3,8 @@ package com.cafepos.core.shared.seguridad;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -10,10 +12,17 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.openapitools.jackson.nullable.JsonNullable;
 
 import java.time.OffsetDateTime;
 
-/** Mapea usuario (ver V1__schema_v4.sql). Solo lectura/actualizacion — la creacion la hace admin-api. */
+/**
+ * Mapea usuario (ver V1__schema_v4.sql). El primer usuario de un tenant
+ * (el Jefe) lo provisiona admin-api al dar de alta el negocio — el alta de
+ * usuarios ADICIONALES dentro de un tenant ya existente es responsabilidad
+ * de com.cafepos.core.configuracion (Modulo 11.1), via el constructor
+ * publico de mas abajo.
+ */
 @Entity
 @Table(name = "usuario")
 @Getter
@@ -27,10 +36,14 @@ public class Usuario {
     private static final long BLOQUEO_MINUTOS = 15;
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     @Column(name = "tenant_id", nullable = false)
     private Integer tenantId;
+
+    @Column(name = "empleado_id")
+    private Integer empleadoId;
 
     @Column(name = "rol_id", nullable = false)
     private Integer rolId;
@@ -48,6 +61,10 @@ public class Usuario {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    /** Solo usuarios con rol Admin o Jefe pueden tenerlo — nunca se expone en una respuesta. */
+    @Column(name = "pin_autorizacion_hash")
+    private String pinAutorizacionHash;
+
     @Column(nullable = false)
     private String estado;
 
@@ -59,6 +76,26 @@ public class Usuario {
 
     @Column(name = "bloqueado_hasta")
     private OffsetDateTime bloqueadoHasta;
+
+    /**
+     * Alta de un usuario adicional dentro de un tenant existente (ver
+     * com.cafepos.core.configuracion, POST /usuarios). Nace siempre con
+     * debeCambiarPassword=true, mismo mecanismo que ya fuerza el cambio de
+     * password temporal en el primer login (ver DebeCambiarPasswordFilter).
+     */
+    public Usuario(Integer tenantId, Integer empleadoId, Integer rolId, String nombre, String correo,
+                    String passwordHash, String pinAutorizacionHash, String estado) {
+        this.tenantId = tenantId;
+        this.empleadoId = empleadoId;
+        this.rolId = rolId;
+        this.nombre = nombre;
+        this.correo = correo;
+        this.passwordHash = passwordHash;
+        this.pinAutorizacionHash = pinAutorizacionHash;
+        this.estado = estado;
+        this.debeCambiarPassword = true;
+        this.intentosFallidos = 0;
+    }
 
     public boolean estaActivo() {
         return ESTADO_ACTIVO.equals(estado);
@@ -88,5 +125,35 @@ public class Usuario {
      */
     public void registrarLoginExitoso() {
         intentosFallidos = 0;
+    }
+
+    /**
+     * PATCH /usuarios/{id} (ver com.cafepos.core.configuracion) — nunca
+     * incluye password, eso cambia solo por el flujo propio de cambio de
+     * password. rolId se queda con tipo plano porque es NOT NULL en la
+     * tabla; empleadoId y pinAutorizacionHash son JsonNullable porque son
+     * genuinamente nullable de negocio (ver regla de DTOs de PATCH en
+     * CLAUDE.md).
+     */
+    public void actualizar(String nombre, String correo, Integer rolId, JsonNullable<Integer> empleadoId,
+                            JsonNullable<String> pinAutorizacionHash, String estado) {
+        if (nombre != null) {
+            this.nombre = nombre;
+        }
+        if (correo != null) {
+            this.correo = correo;
+        }
+        if (rolId != null) {
+            this.rolId = rolId;
+        }
+        if (empleadoId.isPresent()) {
+            this.empleadoId = empleadoId.get();
+        }
+        if (pinAutorizacionHash.isPresent()) {
+            this.pinAutorizacionHash = pinAutorizacionHash.get();
+        }
+        if (estado != null) {
+            this.estado = estado;
+        }
     }
 }
