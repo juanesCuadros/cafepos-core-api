@@ -9,6 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
+/**
+ * @NamedInterface: expuesto puntualmente para que com.cafepos.core.operacion
+ * lea modo_comanda al enviar una comanda (ver obtenerModoComanda) — solo
+ * cruza un String, nunca la entidad ConfiguracionSistema completa.
+ */
+@org.springframework.modulith.NamedInterface("configuracionSistemaService")
 @Service
 public class ConfiguracionSistemaService {
 
@@ -22,6 +28,12 @@ public class ConfiguracionSistemaService {
     public ConfiguracionSistema obtener() {
         return configuracionSistemaRepository.buscarPorTenantActual()
                 .orElseThrow(ConfiguracionSistemaNoConfiguradaException::new);
+    }
+
+    /** API publica de este modulo para enviar-comanda (com.cafepos.core.operacion). */
+    @Transactional(readOnly = true)
+    public String obtenerModoComanda() {
+        return obtener().getModoComanda();
     }
 
     @Transactional

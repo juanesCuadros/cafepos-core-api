@@ -12,4 +12,6 @@ interface PromocionJpaRepository extends TenantAwareRepository<Promocion, Intege
             + "vigencia_inicio AS vigencia_inicio, vigencia_fin AS vigencia_fin, estado AS estado "
             + "FROM promocion ORDER BY nombre", nativeQuery = true)
     List<PromocionResumenRow> listar();
+
+    List<Promocion> findByEstado(String estado);
 }

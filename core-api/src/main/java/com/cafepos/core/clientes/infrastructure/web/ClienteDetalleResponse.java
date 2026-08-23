@@ -1,13 +1,14 @@
 package com.cafepos.core.clientes.infrastructure.web;
 
 import com.cafepos.core.clientes.domain.Cliente;
+import com.cafepos.core.shared.jackson.Monto;
 
 import java.math.BigDecimal;
 
 /** GET /clientes/{id} — UNICO lugar donde numero_documento viaja completo, sin enmascarar. */
 public record ClienteDetalleResponse(Integer id, String codigo, String tipoDocumento, String numeroDocumento,
                                       String nombre, String telefono, String correo, String direccion,
-                                      BigDecimal saldoFavor) {
+                                      @Monto BigDecimal saldoFavor) {
 
     public static ClienteDetalleResponse de(Cliente c) {
         return new ClienteDetalleResponse(c.getId(), c.getCodigo(), c.getTipoDocumento(), c.getNumeroDocumento(),

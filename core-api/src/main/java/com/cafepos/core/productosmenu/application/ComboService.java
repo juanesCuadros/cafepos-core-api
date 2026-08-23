@@ -5,12 +5,15 @@ import com.cafepos.core.productosmenu.domain.ComboGrupo;
 import com.cafepos.core.productosmenu.domain.ComboGrupoCrear;
 import com.cafepos.core.productosmenu.domain.ComboGrupoDetalle;
 import com.cafepos.core.productosmenu.domain.ComboGrupoNoEncontradoException;
+import com.cafepos.core.productosmenu.domain.ComboGrupoParaPedido;
 import com.cafepos.core.productosmenu.domain.ComboGrupoProducto;
 import com.cafepos.core.productosmenu.domain.ComboGrupoProductoNoEncontradoException;
 import com.cafepos.core.productosmenu.domain.ComboNoEncontradoException;
+import com.cafepos.core.productosmenu.domain.ComboParaPedido;
 import com.cafepos.core.productosmenu.domain.ComboRepository;
 import com.cafepos.core.productosmenu.domain.ComboResumen;
 import com.cafepos.core.productosmenu.domain.ProductoNoEncontradoException;
+import com.cafepos.core.productosmenu.domain.ProductoRef;
 import com.cafepos.core.productosmenu.domain.ProductoRepository;
 import com.cafepos.core.shared.codigo.GeneradorCodigo;
 import com.cafepos.core.shared.tenant.TenantContext;
@@ -20,7 +23,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
+/**
+ * @NamedInterface: expuesto puntualmente para que com.cafepos.core.operacion
+ * agregue combos a un pedido (ver buscarParaPedido) — solo cruzan
+ * ComboParaPedido/ComboGrupoParaPedido (tambien anotados), nunca las
+ * entidades Combo/ComboGrupo completas.
+ */
+@org.springframework.modulith.NamedInterface("comboService")
 @Service
 public class ComboService {
 
@@ -47,6 +58,19 @@ public class ComboService {
     @Transactional(readOnly = true)
     public List<ComboGrupoDetalle> gruposDe(Integer comboId) {
         return comboRepository.gruposDe(comboId);
+    }
+
+    /** API publica de este modulo para agregar combos a un pedido (com.cafepos.core.operacion). */
+    @Transactional(readOnly = true)
+    public Optional<ComboParaPedido> buscarParaPedido(Integer comboId) {
+        return comboRepository.buscarPorId(comboId).map(combo -> {
+            List<ComboGrupoParaPedido> grupos = comboRepository.gruposDe(comboId).stream()
+                    .map(g -> new ComboGrupoParaPedido(g.id(), g.nombre(),
+                            g.productos().stream().map(ProductoRef::id).toList()))
+                    .toList();
+            return new ComboParaPedido(combo.getId(), combo.getNombre(), combo.getPrecio(), combo.getEstado(),
+                    grupos);
+        });
     }
 
     /**

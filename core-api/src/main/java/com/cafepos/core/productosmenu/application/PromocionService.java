@@ -1,6 +1,7 @@
 package com.cafepos.core.productosmenu.application;
 
 import com.cafepos.core.productosmenu.domain.DiasSemanaConverter;
+import com.cafepos.core.productosmenu.domain.ItemParaPromocion;
 import com.cafepos.core.productosmenu.domain.ProductoNoEncontradoException;
 import com.cafepos.core.productosmenu.domain.ProductoRef;
 import com.cafepos.core.productosmenu.domain.ProductoRepository;
@@ -9,6 +10,7 @@ import com.cafepos.core.productosmenu.domain.Promocion;
 import com.cafepos.core.productosmenu.domain.PromocionNoEncontradaException;
 import com.cafepos.core.productosmenu.domain.PromocionRepository;
 import com.cafepos.core.productosmenu.domain.PromocionResumen;
+import com.cafepos.core.productosmenu.domain.PromocionSugerida;
 import com.cafepos.core.productosmenu.domain.ValorDescuentoInvalidoException;
 import com.cafepos.core.productosmenu.domain.VigenciaInvalidaException;
 import com.cafepos.core.shared.tenant.TenantContext;
@@ -17,14 +19,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
+/**
+ * @NamedInterface: expuesto puntualmente para que com.cafepos.core.operacion
+ * evalue promociones_sugeridas al ver el detalle de un pedido (ver
+ * evaluarSugeridas) — solo cruzan ItemParaPromocion/PromocionSugerida
+ * (tambien anotados), nunca la entidad Promocion completa.
+ */
+@org.springframework.modulith.NamedInterface("promocionService")
 @Service
 public class PromocionService {
 
     private static final BigDecimal CIEN = new BigDecimal("100");
+
+    /**
+     * Orden lunes-primero, igual que DiasSemanaConverter.DIAS_VALIDOS — indexado
+     * por DayOfWeek.getValue()-1 (MONDAY=1 ... SUNDAY=7).
+     */
+    private static final List<String> DIAS_POR_INDICE = List.of(
+            "lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo");
 
     private final PromocionRepository promocionRepository;
     private final ProductoRepository productoRepository;
@@ -139,5 +158,93 @@ public class PromocionService {
         for (Integer productoId : productosIds) {
             productoRepository.buscarPorId(productoId).orElseThrow(ProductoNoEncontradoException::new);
         }
+    }
+
+    /**
+     * Evalua las promociones activas y vigentes AHORA MISMO contra los items
+     * de un pedido — usado por com.cafepos.core.operacion para
+     * promociones_sugeridas[] en GET /pedidos/{id}. No aplica descuentos,
+     * solo sugiere: quien decide aplicar una promocion real es Caja/Venta
+     * (modulo futuro).
+     */
+    @Transactional(readOnly = true)
+    public List<PromocionSugerida> evaluarSugeridas(List<ItemParaPromocion> items, BigDecimal subtotalPedido) {
+        LocalDate hoy = LocalDate.now();
+        LocalTime ahora = LocalTime.now();
+        String diaHoy = DIAS_POR_INDICE.get(hoy.getDayOfWeek().getValue() - 1);
+
+        List<PromocionSugerida> sugeridas = new ArrayList<>();
+        for (Promocion promo : promocionRepository.listarActivas()) {
+            if (!vigenteHoy(promo, hoy) || !coincideDia(promo, diaHoy) || !coincideHora(promo, ahora)) {
+                continue;
+            }
+            if (Promocion.APLICA_PRODUCTO.equals(promo.getAplicaA())) {
+                evaluarAplicaProducto(promo, items).ifPresent(sugeridas::add);
+            } else {
+                evaluarAplicaVentaTotal(promo, subtotalPedido).ifPresent(sugeridas::add);
+            }
+        }
+        return sugeridas;
+    }
+
+    private boolean vigenteHoy(Promocion promo, LocalDate hoy) {
+        return !hoy.isBefore(promo.getVigenciaInicio()) && !hoy.isAfter(promo.getVigenciaFin());
+    }
+
+    private boolean coincideDia(Promocion promo, String diaHoy) {
+        List<String> dias = DiasSemanaConverter.aLista(promo.getDiasSemana());
+        return dias == null || dias.contains(diaHoy);
+    }
+
+    private boolean coincideHora(Promocion promo, LocalTime ahora) {
+        if (promo.getHoraInicio() == null || promo.getHoraFin() == null) {
+            return true;
+        }
+        return !ahora.isBefore(promo.getHoraInicio()) && !ahora.isAfter(promo.getHoraFin());
+    }
+
+    private Optional<PromocionSugerida> evaluarAplicaProducto(Promocion promo, List<ItemParaPromocion> items) {
+        List<Integer> productosIds = promocionRepository.productosDe(promo.getId()).stream()
+                .map(ProductoRef::id)
+                .toList();
+        List<ItemParaPromocion> coincidentes = items.stream()
+                .filter(i -> productosIds.contains(i.productoId()))
+                .toList();
+        if (coincidentes.isEmpty()) {
+            return Optional.empty();
+        }
+        BigDecimal cantidadTotal = coincidentes.stream().map(ItemParaPromocion::cantidad)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal montoTotal = coincidentes.stream().map(ItemParaPromocion::subtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (promo.getCantidadMinima() != null
+                && cantidadTotal.compareTo(BigDecimal.valueOf(promo.getCantidadMinima())) < 0) {
+            return Optional.empty();
+        }
+        if (promo.getMontoMinimo() != null && montoTotal.compareTo(promo.getMontoMinimo()) < 0) {
+            return Optional.empty();
+        }
+        return Optional.of(new PromocionSugerida(promo.getId(), promo.getNombre(),
+                calcularDescuento(promo, montoTotal)));
+    }
+
+    private Optional<PromocionSugerida> evaluarAplicaVentaTotal(Promocion promo, BigDecimal subtotalPedido) {
+        if (promo.getMontoMinimo() != null && subtotalPedido.compareTo(promo.getMontoMinimo()) < 0) {
+            return Optional.empty();
+        }
+        return Optional.of(new PromocionSugerida(promo.getId(), promo.getNombre(),
+                calcularDescuento(promo, subtotalPedido)));
+    }
+
+    /** valor_fijo nunca descuenta mas de lo que el monto base realmente vale. */
+    private BigDecimal calcularDescuento(Promocion promo, BigDecimal montoBase) {
+        BigDecimal descuento;
+        if (Promocion.TIPO_PORCENTAJE.equals(promo.getTipoDescuento())) {
+            descuento = montoBase.multiply(promo.getValorDescuento())
+                    .divide(CIEN, 2, RoundingMode.HALF_UP);
+        } else {
+            descuento = promo.getValorDescuento();
+        }
+        return descuento.min(montoBase);
     }
 }

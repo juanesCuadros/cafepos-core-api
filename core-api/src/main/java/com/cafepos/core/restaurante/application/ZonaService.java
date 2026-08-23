@@ -16,13 +16,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Zona y Mesa comparten un solo service a proposito: comparten el mismo
  * permiso de catalogo (restaurante.zonas_mesas, mesa no tiene entrada
  * propia) y una mesa siempre vive dentro de una zona — separarlos en dos
  * services no ganaria independencia real.
+ *
+ * @NamedInterface: expuesto puntualmente para que com.cafepos.core.operacion
+ * lea el panel de mesas y cambie el estado de una mesa (abrir/mover/cerrar
+ * pedido) — "llamada directa sincrona" entre modulos, mismo patron que
+ * restaurante.MenuPublicoService -> productosmenu.ProductoService. Solo
+ * cruzan MesaResumen/ZonaResumen (tambien anotados), nunca las entidades
+ * Mesa/Zona completas.
  */
+@org.springframework.modulith.NamedInterface("zonaService")
 @Service
 public class ZonaService {
 
@@ -105,5 +114,25 @@ public class ZonaService {
     @Transactional
     public void eliminarMesa(Integer id) {
         mesaRepository.eliminar(buscarMesaPorId(id));
+    }
+
+    /** Version liviana de buscarMesaPorId para consumo cross-modulo — nunca expone la entidad Mesa. */
+    @Transactional(readOnly = true)
+    public Optional<MesaResumen> buscarMesaResumenPorId(Integer id) {
+        return mesaRepository.buscarPorId(id).map(ZonaService::aResumen);
+    }
+
+    /** Cambia SOLO el estado de una mesa (ocupada/libre/lista_cobrar) — usado por operacion al abrir/mover/cerrar un pedido. */
+    @Transactional
+    public Optional<MesaResumen> cambiarEstadoMesa(Integer id, String nuevoEstado) {
+        return mesaRepository.buscarPorId(id).map(mesa -> {
+            mesa.actualizar(null, null, null, nuevoEstado);
+            return aResumen(mesaRepository.guardar(mesa));
+        });
+    }
+
+    private static MesaResumen aResumen(Mesa mesa) {
+        return new MesaResumen(mesa.getId(), mesa.getCodigo(), mesa.getNumero(), mesa.getCapacidad(),
+                mesa.getEstado());
     }
 }

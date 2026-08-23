@@ -1,6 +1,7 @@
 package com.cafepos.core.productosmenu.infrastructure.web;
 
 import com.cafepos.core.productosmenu.domain.Producto;
+import com.cafepos.core.shared.jackson.Monto;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -14,8 +15,8 @@ public record ProductoDetalleResponse(
         Integer categoriaId,
         Integer areaCocinaId,
         String imagen,
-        BigDecimal precioVenta,
-        BigDecimal costoEstimado,
+        @Monto BigDecimal precioVenta,
+        @Monto BigDecimal costoEstimado,
         String tasaImpuesto,
         boolean manejaReceta,
         boolean manejaInventario,

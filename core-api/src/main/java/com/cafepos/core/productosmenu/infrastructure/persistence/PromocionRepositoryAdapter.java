@@ -60,4 +60,9 @@ class PromocionRepositoryAdapter implements PromocionRepository {
                 .map(row -> new ProductoRef(row.getId(), row.getNombre()))
                 .toList();
     }
+
+    @Override
+    public List<Promocion> listarActivas() {
+        return jpaRepository.findByEstado(Promocion.ESTADO_ACTIVA);
+    }
 }

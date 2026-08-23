@@ -5,6 +5,7 @@ import com.cafepos.core.productosmenu.domain.CategoriaNoEncontradaException;
 import com.cafepos.core.productosmenu.domain.CategoriaRepository;
 import com.cafepos.core.productosmenu.domain.Producto;
 import com.cafepos.core.productosmenu.domain.ProductoNoEncontradoException;
+import com.cafepos.core.productosmenu.domain.ProductoParaPedido;
 import com.cafepos.core.productosmenu.domain.ProductoPublico;
 import com.cafepos.core.productosmenu.domain.ProductoRepository;
 import com.cafepos.core.productosmenu.domain.ProductoResumen;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @NamedInterface: expuesto puntualmente para "llamada directa síncrona"
@@ -52,6 +54,13 @@ public class ProductoService {
     @Transactional(readOnly = true)
     public List<ProductoPublico> listarVisiblesParaMenuPublico() {
         return productoRepository.listarVisiblesParaMenuPublico();
+    }
+
+    /** API publica de este modulo para agregar productos a un pedido (com.cafepos.core.operacion). */
+    @Transactional(readOnly = true)
+    public Optional<ProductoParaPedido> buscarParaPedido(Integer id) {
+        return productoRepository.buscarPorId(id).map(p -> new ProductoParaPedido(
+                p.getId(), p.getNombre(), p.getPrecioVenta(), p.getEstado(), p.getAreaCocinaId()));
     }
 
     @Transactional

@@ -1,6 +1,7 @@
 package com.cafepos.core.inventario.infrastructure.web;
 
 import com.cafepos.core.inventario.domain.Insumo;
+import com.cafepos.core.shared.jackson.Monto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -16,8 +17,8 @@ public record InsumoDetalleResponse(
         BigDecimal stockActual,
         BigDecimal stockMinimo,
         BigDecimal stockMaximo,
-        BigDecimal costoActual,
-        BigDecimal valorTotal,
+        @Monto BigDecimal costoActual,
+        @Monto BigDecimal valorTotal,
         String estadoStock,
         LocalDate fechaVencimRef,
         String estado,

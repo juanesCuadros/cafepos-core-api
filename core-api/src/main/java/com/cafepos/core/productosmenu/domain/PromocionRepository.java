@@ -18,4 +18,7 @@ public interface PromocionRepository {
     void reemplazarProductos(Integer promocionId, Integer tenantId, List<Integer> productoIds);
 
     List<ProductoRef> productosDe(Integer promocionId);
+
+    /** Entidades completas (no PromocionResumen) — usado para evaluar aplicabilidad, ver PromocionService.evaluarSugeridas. */
+    List<Promocion> listarActivas();
 }
