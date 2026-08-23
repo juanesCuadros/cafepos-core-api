@@ -35,6 +35,10 @@ public class Usuario {
     private static final int MAX_INTENTOS_FALLIDOS = 5;
     private static final long BLOQUEO_MINUTOS = 15;
 
+    /** Contador separado del de login (V17) — 5 PIN fallidos consecutivos bloquean el PIN por 30 minutos. */
+    private static final int MAX_PIN_INTENTOS_FALLIDOS = 5;
+    private static final long PIN_BLOQUEO_MINUTOS = 30;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -76,6 +80,12 @@ public class Usuario {
 
     @Column(name = "bloqueado_hasta")
     private OffsetDateTime bloqueadoHasta;
+
+    @Column(name = "pin_intentos_fallidos", nullable = false)
+    private int pinIntentosFallidos;
+
+    @Column(name = "pin_bloqueado_hasta")
+    private OffsetDateTime pinBloqueadoHasta;
 
     /**
      * Alta de un usuario adicional dentro de un tenant existente (ver
@@ -125,6 +135,32 @@ public class Usuario {
      */
     public void registrarLoginExitoso() {
         intentosFallidos = 0;
+    }
+
+    public boolean estaPinBloqueado() {
+        return pinBloqueadoHasta != null && pinBloqueadoHasta.isAfter(OffsetDateTime.now());
+    }
+
+    /**
+     * Al llegar a MAX_PIN_INTENTOS_FALLIDOS, bloquea y resetea el contador
+     * para que el proximo ciclo cuente desde cero — mismo criterio que
+     * registrarIntentoFallido() para login, contador independiente. Devuelve
+     * los intentos restantes antes del bloqueo, para que el 403 de
+     * PinVerificarService pueda informarlo.
+     */
+    public int registrarPinIntentoFallido() {
+        pinIntentosFallidos++;
+        if (pinIntentosFallidos >= MAX_PIN_INTENTOS_FALLIDOS) {
+            pinBloqueadoHasta = OffsetDateTime.now().plusMinutes(PIN_BLOQUEO_MINUTOS);
+            pinIntentosFallidos = 0;
+            return 0;
+        }
+        return MAX_PIN_INTENTOS_FALLIDOS - pinIntentosFallidos;
+    }
+
+    /** No toca pinBloqueadoHasta, mismo motivo que registrarLoginExitoso(). */
+    public void registrarPinExitoso() {
+        pinIntentosFallidos = 0;
     }
 
     /**

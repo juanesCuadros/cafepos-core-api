@@ -21,15 +21,18 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final LogoutService logoutService;
     private final CambiarPasswordInicialService cambiarPasswordInicialService;
+    private final PinVerificarService pinVerificarService;
 
     public AuthController(LoginService loginService,
                            RefreshTokenService refreshTokenService,
                            LogoutService logoutService,
-                           CambiarPasswordInicialService cambiarPasswordInicialService) {
+                           CambiarPasswordInicialService cambiarPasswordInicialService,
+                           PinVerificarService pinVerificarService) {
         this.loginService = loginService;
         this.refreshTokenService = refreshTokenService;
         this.logoutService = logoutService;
         this.cambiarPasswordInicialService = cambiarPasswordInicialService;
+        this.pinVerificarService = pinVerificarService;
     }
 
     @PostMapping("/login")
@@ -108,5 +111,27 @@ public class AuthController {
         AuthenticatedUsuario principal = (AuthenticatedUsuario) authentication.getPrincipal();
         return TokenResponse.de(cambiarPasswordInicialService.ejecutar(
                 principal.usuarioId(), request.passwordActual(), request.passwordNueva()));
+    }
+
+    @PostMapping("/pin/verificar")
+    @Operation(
+            summary = "Verifica el PIN de step-up de un usuario Admin/Jefe",
+            description = "Requiere access token JWT valido de CUALQUIER usuario autenticado (no permitAll) — "
+                    + "quien pide la verificacion no tiene que ser el mismo usuario_autoriza_correo. modulo+accion "
+                    + "usan el mismo formato del catalogo de permisos. Si autorizado=true, devuelve un pin_token "
+                    + "(JWT, TTL de 2 minutos, atado a permiso+recurso especificos) para usar en el header "
+                    + "X-Pin-Token del endpoint que en verdad requiere el PIN (ver PinStepUpService).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "PIN correcto, devuelve el pin_token"),
+            @ApiResponse(responseCode = "400", description = "Datos invalidos"),
+            @ApiResponse(responseCode = "403", description = "PIN incorrecto (mensaje generico, tambien cubre "
+                    + "correo inexistente, rol distinto de Admin/Jefe, o usuario sin PIN configurado)"),
+            @ApiResponse(responseCode = "404", description = "El (modulo, accion) pedido no existe en el catalogo"),
+            @ApiResponse(responseCode = "423", description = "PIN bloqueado por 5 intentos fallidos consecutivos")
+    })
+    public PinVerificarResponse verificarPin(@Valid @RequestBody PinVerificarRequest request) {
+        return PinVerificarResponse.de(pinVerificarService.ejecutar(
+                request.usuarioAutorizaCorreo(), request.pin(), request.modulo(), request.accion(),
+                request.recursoTipo(), request.recursoId()));
     }
 }

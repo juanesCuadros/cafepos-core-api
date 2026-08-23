@@ -13,12 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 
 /**
- * PENDIENTE (a proposito, NO implementado todavia): el contrato pide PIN
- * (accion "ajuste_inventario") para este endpoint. La infraestructura de
- * PIN de step-up todavia no existe en codigo (solo diseñada) - se
- * construira antes de Caja, que tiene la mayoria de acciones que la
- * requieren. usuarioAutorizaId igual se guarda en el movimiento (para
- * trazabilidad), simplemente no se valida ningun PIN todavia.
+ * El PIN de step-up (modulo "inventario.existencias", accion "ajustar") se
+ * valida en AjusteController ANTES de llegar aca (ver PinStepUpService) —
+ * usuarioAutorizaId llega ya autorizado, esta clase solo lo persiste en el
+ * movimiento para trazabilidad.
  */
 @Service
 public class AjusteService {

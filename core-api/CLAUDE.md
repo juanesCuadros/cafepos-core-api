@@ -151,6 +151,35 @@ reglas del proyecto que no deben repetirse en cada prompt.
   (`@PreAuthorize("hasPermission('modulo.subvista', 'accion')")`), con caché
   Caffeine por `(tenant_id, rol_id)`.
 
+## PIN de step-up (regla obligatoria para acciones con `requiere_pin=true`)
+
+- Cualquier endpoint que mute datos marcados con `requiere_pin=true` en
+  `tenant_permiso_config` debe exigir el header `X-Pin-Token` y llamar a
+  `PinStepUpService.validar(pinTokenHeaderValue, modulo, accion,
+  recursoTipo, recursoId)` (`shared.seguridad`) **al inicio del método**,
+  antes de ejecutar la mutación — si la validación falla, la mutación no
+  debe correr. `modulo`/`accion` son los del catálogo `permiso` de ese
+  endpoint; `recursoTipo`/`recursoId` identifican el recurso puntual de
+  esa petición (ej. `"insumo"` + el `insumo_id` del request). Ver
+  `AjusteController` (`inventario`) como ejemplo ya conectado.
+- El `pin_token` se obtiene de `POST /auth/pin/verificar` (`modulo` +
+  `accion` en vez de un nombre de acción de negocio plano — mismo formato
+  del catálogo `permiso` ya existente). Es un JWT firmado con la MISMA
+  llave de core-api que un access token normal, diferenciado SOLO por el
+  claim `"typ": "pin_stepup"` — `PinStepUpService` rechaza cualquier token
+  sin ese claim exacto, incluyendo un access token normal presentado por
+  error. TTL corto (`cafepos.pin-authorization.token-ttl-minutes`, 2
+  minutos por defecto) + atado a `permiso_id` + `recurso_tipo` +
+  `recurso_id` específicos (comparados EXACTOS, ver `JwtService`).
+- NOTA DE DISEÑO: no hay enforcement de un solo uso real (no existe tabla
+  de tokens consumidos) — la protección es el TTL corto más estar atado al
+  recurso específico. Si se necesita single-use estricto en el futuro,
+  hace falta una tabla de tokens ya usados — fuera de alcance por ahora.
+- El contador de bloqueo de PIN (`usuario.pin_intentos_fallidos` /
+  `pin_bloqueado_hasta`, ver V17) es independiente del contador de login
+  (RN-008) — 5 PIN fallidos consecutivos bloquean el PIN por 30 minutos,
+  sin afectar el login.
+
 ## Stack técnico
 
 - Spring Boot 3.5.x (no 4.0 — ecosistema todavía inmaduro sobre Boot 4 para

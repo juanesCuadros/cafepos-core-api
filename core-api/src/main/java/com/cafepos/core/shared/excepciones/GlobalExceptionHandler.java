@@ -3,6 +3,11 @@ package com.cafepos.core.shared.excepciones;
 import com.cafepos.core.shared.seguridad.CredencialesInvalidasException;
 import com.cafepos.core.shared.seguridad.CuentaBloqueadaException;
 import com.cafepos.core.shared.seguridad.PasswordActualIncorrectaException;
+import com.cafepos.core.shared.seguridad.PermisoNoEncontradoException;
+import com.cafepos.core.shared.seguridad.PinBloqueadoException;
+import com.cafepos.core.shared.seguridad.PinIncorrectoException;
+import com.cafepos.core.shared.seguridad.PinIncorrectoResponse;
+import com.cafepos.core.shared.seguridad.PinRequeridoException;
 import com.cafepos.core.shared.seguridad.RefreshTokenInvalidoException;
 import com.cafepos.core.shared.tenant.TenantNoEncontradoException;
 import com.cafepos.core.shared.tenant.TenantSuspendidoException;
@@ -57,6 +62,30 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(TenantNoEncontradoException.class)
     public ResponseEntity<ErrorResponse> handleTenantNoEncontrado(TenantNoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(PinIncorrectoException.class)
+    public ResponseEntity<PinIncorrectoResponse> handlePinIncorrecto(PinIncorrectoException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new PinIncorrectoResponse(false, ex.getMessage(), PinIncorrectoException.CODIGO,
+                        ex.getIntentosRestantes()));
+    }
+
+    @ExceptionHandler(PinBloqueadoException.class)
+    public ResponseEntity<ErrorConCodigoResponse> handlePinBloqueado(PinBloqueadoException ex) {
+        return ResponseEntity.status(HttpStatus.LOCKED)
+                .body(new ErrorConCodigoResponse(ex.getMessage(), PinBloqueadoException.CODIGO));
+    }
+
+    @ExceptionHandler(PinRequeridoException.class)
+    public ResponseEntity<ErrorConCodigoResponse> handlePinRequerido(PinRequeridoException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorConCodigoResponse(ex.getMessage(), PinRequeridoException.CODIGO));
+    }
+
+    @ExceptionHandler(PermisoNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handlePermisoNoEncontrado(PermisoNoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
     }
 
