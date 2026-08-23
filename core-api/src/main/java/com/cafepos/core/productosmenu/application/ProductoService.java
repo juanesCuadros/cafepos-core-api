@@ -5,6 +5,7 @@ import com.cafepos.core.productosmenu.domain.CategoriaNoEncontradaException;
 import com.cafepos.core.productosmenu.domain.CategoriaRepository;
 import com.cafepos.core.productosmenu.domain.Producto;
 import com.cafepos.core.productosmenu.domain.ProductoNoEncontradoException;
+import com.cafepos.core.productosmenu.domain.ProductoPublico;
 import com.cafepos.core.productosmenu.domain.ProductoRepository;
 import com.cafepos.core.productosmenu.domain.ProductoResumen;
 import com.cafepos.core.productosmenu.domain.ResultadoEliminacionProducto;
@@ -17,6 +18,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 
+/**
+ * @NamedInterface: expuesto puntualmente para "llamada directa síncrona"
+ * desde otros módulos (ver restaurante.MenuPublicoService) — el resto de
+ * application (CategoriaService, PromocionService, ComboService) y todo
+ * domain/infrastructure de este módulo siguen cerrados.
+ */
+@org.springframework.modulith.NamedInterface("productoService")
 @Service
 public class ProductoService {
 
@@ -38,6 +46,12 @@ public class ProductoService {
     @Transactional(readOnly = true)
     public Producto buscarPorId(Integer id) {
         return productoRepository.buscarPorId(id).orElseThrow(ProductoNoEncontradoException::new);
+    }
+
+    /** API publica de este modulo para el menu publico de restaurante (com.cafepos.core.restaurante). */
+    @Transactional(readOnly = true)
+    public List<ProductoPublico> listarVisiblesParaMenuPublico() {
+        return productoRepository.listarVisiblesParaMenuPublico();
     }
 
     @Transactional

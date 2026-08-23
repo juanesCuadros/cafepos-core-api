@@ -104,6 +104,21 @@ reglas del proyecto que no deben repetirse en cada prompt.
   necesita consistencia transaccional atómica (ej. venta descuenta
   inventario en la misma transacción). Eventos de aplicación de Modulith
   para todo lo que tolera consistencia eventual.
+- Mecanismo técnico para la llamada directa síncrona: Spring Modulith
+  rechaza por defecto cualquier llamada a un paquete no expuesto, incluso
+  entre módulos ya autorizados a comunicarse sincrónicamente (`verify()`
+  trata `domain`/`application`/`infrastructure` como internos salvo que se
+  exponga algo explícitamente). El módulo LLAMADO debe exponer SOLO lo que
+  el otro necesita, con `@org.springframework.modulith.NamedInterface`
+  puesto sobre las clases/records puntuales (ej. el service y el DTO de
+  salida) — NUNCA sobre el paquete completo vía `package-info.java`.
+  Exponer el paquete entero rompe el propósito de Modulith: cualquier otro
+  módulo futuro podría empezar a usar cualquier otra cosa de ese paquete
+  sin autorización explícita. Ejemplo real ya resuelto: `restaurante.MenuPublicoService`
+  llama a `productosmenu.ProductoService` para armar el menú digital
+  público — `ProductoService` y el record `ProductoPublico` llevan
+  `@NamedInterface`, nada más del paquete `productosmenu.application` está
+  expuesto.
 - Nunca acceder a `domain`/`application`/`infrastructure` de otro módulo
   directamente — correr `mvn test -Dtest=ModularityTests` antes de cualquier
   commit importante para confirmar que los límites se respetan.

@@ -14,6 +14,9 @@ public interface ProductoRepository {
 
     boolean existeAreaCocina(Integer areaCocinaId);
 
+    /** Usado por restaurante.MenuPublicoService — ver ProductoPublico. */
+    List<ProductoPublico> listarVisiblesParaMenuPublico();
+
     /** join pedido_item -> venta por pedido_id: solo cuenta si el pedido llego a facturarse, no cualquier pedido. */
     boolean tieneVentasAsociadas(Integer productoId);
 

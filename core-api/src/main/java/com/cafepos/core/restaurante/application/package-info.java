@@ -1,2 +1,2 @@
-/** Capa application del módulo restaurante. Ver package-info.java del módulo para el contrato de comunicación entre módulos. */
+/** Ver package-info.java del módulo para el contrato de comunicación entre módulos. */
 package com.cafepos.core.restaurante.application;

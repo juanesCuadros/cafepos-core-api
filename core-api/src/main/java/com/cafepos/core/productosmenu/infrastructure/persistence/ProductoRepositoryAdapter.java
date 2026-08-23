@@ -1,6 +1,7 @@
 package com.cafepos.core.productosmenu.infrastructure.persistence;
 
 import com.cafepos.core.productosmenu.domain.Producto;
+import com.cafepos.core.productosmenu.domain.ProductoPublico;
 import com.cafepos.core.productosmenu.domain.ProductoRepository;
 import com.cafepos.core.productosmenu.domain.ProductoResumen;
 import org.springframework.stereotype.Repository;
@@ -39,6 +40,14 @@ class ProductoRepositoryAdapter implements ProductoRepository {
     @Override
     public boolean existeAreaCocina(Integer areaCocinaId) {
         return jpaRepository.existeAreaCocina(areaCocinaId);
+    }
+
+    @Override
+    public List<ProductoPublico> listarVisiblesParaMenuPublico() {
+        return jpaRepository.listarVisiblesParaMenuPublico().stream()
+                .map(row -> new ProductoPublico(row.getCategoriaNombre(), row.getCategoriaOrden(), row.getNombre(),
+                        row.getDescripcion(), row.getPrecioVenta(), row.getImagen()))
+                .toList();
     }
 
     @Override
