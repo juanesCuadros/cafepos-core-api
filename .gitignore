@@ -16,3 +16,4 @@ application-local.yml
 
 .DS_Store
 Thumbs.db
+api_*.md
