@@ -36,6 +36,18 @@ public class ConfiguracionSistemaService {
         return obtener().getModoComanda();
     }
 
+    /**
+     * API publica de este modulo para calcular impuestos al cobrar
+     * (com.cafepos.core.caja) — default cuando producto.tasa_impuesto es
+     * null o no se puede parsear. BigDecimal.ZERO si el tenant nunca
+     * configuro inc_porcentaje (columna nullable).
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal obtenerIncPorcentaje() {
+        BigDecimal incPorcentaje = obtener().getIncPorcentaje();
+        return incPorcentaje != null ? incPorcentaje : BigDecimal.ZERO;
+    }
+
     @Transactional
     public ConfiguracionSistema actualizar(String modoComanda, JsonNullable<Integer> tiempoLimitePrepMin,
                                             String propinaTipo, JsonNullable<BigDecimal> propinaPorcentaje,

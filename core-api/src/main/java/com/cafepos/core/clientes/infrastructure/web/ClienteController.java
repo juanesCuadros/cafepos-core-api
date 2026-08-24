@@ -40,16 +40,14 @@ public class ClienteController {
 
     /**
      * Version liviana para el modal de seleccion de cliente en el POS —
-     * ver Javadoc de ClienteBusqueda: api_03_caja.md (donde se documenta
-     * originalmente este endpoint) todavia no esta en el repo, el shape
-     * de respuesta es una inferencia a verificar cuando ese contrato
-     * exista. Mapeado ANTES que /{id} a proposito de la lectura, aunque
-     * Spring ya resuelve la ruta literal "/buscar" por sobre el patron
-     * "/{id}" sin ambiguedad real.
+     * ver api_03_caja.md 3.2 y Javadoc de ClienteBusqueda. Mapeado ANTES
+     * que /{id} a proposito de la lectura, aunque Spring ya resuelve la
+     * ruta literal "/buscar" por sobre el patron "/{id}" sin ambiguedad
+     * real.
      */
     @GetMapping("/buscar")
     @PreAuthorize("hasPermission('clientes', 'ver')")
-    @Operation(summary = "Busqueda liviana de clientes para el modal de venta del POS (INFERIDO, ver Javadoc)")
+    @Operation(summary = "Busqueda liviana de clientes para el modal de venta del POS")
     public ClientesBusquedaResponse buscar(@RequestParam(required = false) String q) {
         return ClientesBusquedaResponse.de(clienteService.buscarLiviano(q));
     }

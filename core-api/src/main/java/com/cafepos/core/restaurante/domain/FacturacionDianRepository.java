@@ -13,4 +13,7 @@ public interface FacturacionDianRepository {
      * facturacion_dian_resolucion — ver Javadoc de FacturacionDianEstado.
      */
     Optional<String> buscarEstadoConexion();
+
+    /** Usado SOLO para persistir incrementarNumeracion() — ver Javadoc de FacturacionDianResolucion. */
+    FacturacionDianResolucion guardar(FacturacionDianResolucion resolucion);
 }

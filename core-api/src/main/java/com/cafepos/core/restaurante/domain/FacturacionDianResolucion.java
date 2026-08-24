@@ -15,8 +15,12 @@ import java.time.OffsetDateTime;
 
 /**
  * Mapea facturacion_dian_resolucion (ver V1__schema_v4.sql, Modulo 10.4 de
- * api_10_restaurante.md) — SOLO LECTURA, sin metodo actualizar() a
- * proposito, la configura soporte tecnico directo en base de datos.
+ * api_10_restaurante.md) — de solo lectura para su PROPIO modulo (sin
+ * actualizar() para prefijo/rango/etc, eso lo configura soporte tecnico
+ * directo en base de datos). incrementarNumeracion() es la UNICA
+ * excepcion: numeracion_actual es un contador de runtime (no
+ * configuracion), que com.cafepos.core.caja necesita avanzar cada vez
+ * que emite una factura real — ver FacturacionDianService.reservarSiguienteNumeroFactura.
  *
  * CRITICO DE SEGURIDAD: client_id_factus y client_secret_factus de la
  * tabla real NO se mapean aca a proposito — ni siquiera con @JsonIgnore,
@@ -67,4 +71,10 @@ public class FacturacionDianResolucion {
 
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    /** Ver Javadoc de la clase — unico mutador permitido, numeracion_actual es un contador de runtime. */
+    public void incrementarNumeracion() {
+        this.numeracionActual = (this.numeracionActual != null ? this.numeracionActual : 0L) + 1;
+        this.updatedAt = OffsetDateTime.now();
+    }
 }

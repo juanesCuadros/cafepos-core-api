@@ -4,15 +4,20 @@ import com.cafepos.core.operacion.domain.ComboNoEncontradoException;
 import com.cafepos.core.operacion.domain.ComboSeleccionIncompletaException;
 import com.cafepos.core.operacion.domain.ItemInvalidoException;
 import com.cafepos.core.operacion.domain.MesaDestinoNoDisponibleException;
+import com.cafepos.core.operacion.domain.MesaIdNoPermitidoException;
+import com.cafepos.core.operacion.domain.MesaIdObligatorioException;
 import com.cafepos.core.operacion.domain.MesaNoEncontradaException;
 import com.cafepos.core.operacion.domain.MesaOcupadaException;
 import com.cafepos.core.operacion.domain.Pedido;
 import com.cafepos.core.operacion.domain.PedidoItem;
 import com.cafepos.core.operacion.domain.PedidoItemComboSeleccion;
 import com.cafepos.core.operacion.domain.PedidoItemNoEncontradoException;
+import com.cafepos.core.operacion.domain.PedidoItemParaVenta;
 import com.cafepos.core.operacion.domain.PedidoItemRepository;
 import com.cafepos.core.operacion.domain.PedidoNoEncontradoException;
+import com.cafepos.core.operacion.domain.PedidoParaVenta;
 import com.cafepos.core.operacion.domain.PedidoRepository;
+import com.cafepos.core.operacion.domain.PedidoSinMesaException;
 import com.cafepos.core.operacion.domain.ProductoAgotadoException;
 import com.cafepos.core.operacion.domain.ProductoNoEncontradoException;
 import com.cafepos.core.configuracion.application.ConfiguracionSistemaService;
@@ -37,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Servicio principal de "pedido abierto" (Parte 2). Llama directamente
@@ -44,7 +50,13 @@ import java.util.List;
  * ProductoService/ComboService/PromocionService (productosmenu) y
  * ConfiguracionSistemaService (configuracion) — todos NamedInterface, ver
  * package-info.java de este modulo.
+ *
+ * @NamedInterface: expuesto puntualmente para que com.cafepos.core.caja
+ * cobre un pedido (ver buscarParaVenta/marcarCerrado/finalizarEntrega) —
+ * solo cruzan PedidoParaVenta/PedidoItemParaVenta (tambien anotados),
+ * nunca las entidades Pedido/PedidoItem completas.
  */
+@org.springframework.modulith.NamedInterface("pedidoService")
 @Service
 public class PedidoService {
 
@@ -84,19 +96,41 @@ public class PedidoService {
 
     @Transactional
     public PedidoDetalle abrir(Integer mesaId, String tipo, Integer usuarioId) {
+        if (Pedido.TIPO_MESA.equals(tipo)) {
+            if (mesaId == null) {
+                throw new MesaIdObligatorioException();
+            }
+            return abrirDeMesa(mesaId, usuarioId);
+        }
+        if (mesaId != null) {
+            throw new MesaIdNoPermitidoException();
+        }
+        return abrirVentaRapida(usuarioId);
+    }
+
+    private PedidoDetalle abrirDeMesa(Integer mesaId, Integer usuarioId) {
         zonaService.buscarMesaResumenPorId(mesaId).orElseThrow(MesaNoEncontradaException::new);
         pedidoRepository.buscarActivoPorMesa(mesaId).ifPresent(p -> {
             throw new MesaOcupadaException();
         });
 
+        Pedido pedido = crearPedido(mesaId, Pedido.TIPO_MESA, usuarioId);
+        zonaService.cambiarEstadoMesa(mesaId, MESA_ESTADO_OCUPADA);
+        return construirDetalle(pedido);
+    }
+
+    /** venta_rapida (Caja) — pedido sin mesa, ver api_03_caja.md 3.1. */
+    private PedidoDetalle abrirVentaRapida(Integer usuarioId) {
+        Pedido pedido = crearPedido(null, Pedido.TIPO_VENTA_RAPIDA, usuarioId);
+        return construirDetalle(pedido);
+    }
+
+    private Pedido crearPedido(Integer mesaId, String tipo, Integer usuarioId) {
         Integer tenantId = TenantContext.getCurrentTenantId();
         Pedido pedido = new Pedido(tenantId, mesaId, usuarioId, tipo);
         pedido = pedidoRepository.guardar(pedido);
         pedido.asignarNumeroOrden(GeneradorCodigo.generar(PREFIJO_CODIGO_ORDEN, pedido.getId()));
-        pedido = pedidoRepository.guardar(pedido);
-
-        zonaService.cambiarEstadoMesa(mesaId, MESA_ESTADO_OCUPADA);
-        return construirDetalle(pedido);
+        return pedidoRepository.guardar(pedido);
     }
 
     @Transactional(readOnly = true)
@@ -172,6 +206,9 @@ public class PedidoService {
     @Transactional
     public Integer marcarListaCobrar(Integer pedidoId) {
         Pedido pedido = buscarPedido(pedidoId);
+        if (pedido.getMesaId() == null) {
+            throw new PedidoSinMesaException();
+        }
         zonaService.cambiarEstadoMesa(pedido.getMesaId(), MESA_ESTADO_LISTA_COBRAR)
                 .orElseThrow(MesaNoEncontradaException::new);
         return pedido.getMesaId();
@@ -183,6 +220,57 @@ public class PedidoService {
         PedidoDetalle detalle = construirDetalle(buscarPedido(pedidoId));
         return new PrefacturaResultado(detalle.numeroOrden(), detalle.mesa().numero(), detalle.items(),
                 detalle.subtotal(), OffsetDateTime.now());
+    }
+
+    /** API publica de este modulo para POST /ventas (com.cafepos.core.caja). */
+    @Transactional(readOnly = true)
+    public Optional<PedidoParaVenta> buscarParaVenta(Integer pedidoId) {
+        return pedidoRepository.buscarPorId(pedidoId).map(pedido -> {
+            List<PedidoItemParaVenta> items = pedidoItemRepository.listarDePedido(pedidoId).stream()
+                    .map(this::aItemParaVenta)
+                    .toList();
+            return new PedidoParaVenta(pedido.getId(), pedido.getTipo(), pedido.getEstado(), pedido.getMesaId(),
+                    pedido.getUsuarioId(), items);
+        });
+    }
+
+    /** API publica de este modulo para POST /ventas (com.cafepos.core.caja) — no libera la mesa. */
+    @Transactional
+    public void marcarCerrado(Integer pedidoId) {
+        Pedido pedido = buscarPedido(pedidoId);
+        pedido.cerrar();
+        pedidoRepository.guardar(pedido);
+    }
+
+    /**
+     * API publica de este modulo para POST /ventas/{id}/finalizar-entrega
+     * (com.cafepos.core.caja) — libera la mesa SOLO si el pedido es tipo
+     * 'mesa'. Devuelve si la libero o no (venta_rapida nunca tiene mesa).
+     */
+    @Transactional
+    public boolean finalizarEntrega(Integer pedidoId) {
+        Pedido pedido = buscarPedido(pedidoId);
+        if (pedido.getMesaId() == null) {
+            return false;
+        }
+        zonaService.cambiarEstadoMesa(pedido.getMesaId(), MESA_ESTADO_LIBRE);
+        return true;
+    }
+
+    private PedidoItemParaVenta aItemParaVenta(PedidoItem item) {
+        String nombre;
+        String tasaImpuesto;
+        if (item.getProductoId() != null) {
+            ProductoParaPedido producto = productoService.buscarParaPedido(item.getProductoId()).orElse(null);
+            nombre = producto != null ? producto.nombre() : "Producto eliminado";
+            tasaImpuesto = producto != null ? producto.tasaImpuesto() : null;
+        } else {
+            nombre = comboService.buscarParaPedido(item.getComboId()).map(ComboParaPedido::nombre)
+                    .orElse("Combo eliminado");
+            tasaImpuesto = null;
+        }
+        return new PedidoItemParaVenta(item.getProductoId(), item.getComboId(), nombre, item.getCantidad(),
+                item.getPrecioUnitario(), tasaImpuesto);
     }
 
     private PedidoItem agregarItemProducto(Pedido pedido, Integer productoId, BigDecimal cantidad,
@@ -222,8 +310,8 @@ public class PedidoService {
     }
 
     private PedidoDetalle construirDetalle(Pedido pedido) {
-        MesaResumen mesa = zonaService.buscarMesaResumenPorId(pedido.getMesaId())
-                .orElseThrow(MesaNoEncontradaException::new);
+        MesaResumen mesa = pedido.getMesaId() == null ? null
+                : zonaService.buscarMesaResumenPorId(pedido.getMesaId()).orElseThrow(MesaNoEncontradaException::new);
         Usuario usuario = usuarioRepository.findById(pedido.getUsuarioId()).orElseThrow();
 
         List<PedidoItem> itemEntities = pedidoItemRepository.listarDePedido(pedido.getId());

@@ -68,6 +68,14 @@ public class PromocionService {
         return promocionRepository.productosDe(promocionId);
     }
 
+    /** API publica de este modulo para validar promociones_aplicadas al cobrar (com.cafepos.core.caja). */
+    @Transactional(readOnly = true)
+    public boolean existeActiva(Integer promocionId) {
+        return promocionRepository.buscarPorId(promocionId)
+                .map(p -> Promocion.ESTADO_ACTIVA.equals(p.getEstado()))
+                .orElse(false);
+    }
+
     @Transactional
     public Promocion crear(String nombre, String tipoDescuento, BigDecimal valorDescuento, String aplicaA,
                             List<Integer> productosIds, LocalDate vigenciaInicio, LocalDate vigenciaFin,

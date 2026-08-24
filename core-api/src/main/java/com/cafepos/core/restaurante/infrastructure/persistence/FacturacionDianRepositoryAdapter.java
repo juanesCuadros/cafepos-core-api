@@ -24,4 +24,9 @@ class FacturacionDianRepositoryAdapter implements FacturacionDianRepository {
     public Optional<String> buscarEstadoConexion() {
         return jpaRepository.buscarEstadoConexionDian();
     }
+
+    @Override
+    public FacturacionDianResolucion guardar(FacturacionDianResolucion resolucion) {
+        return jpaRepository.save(resolucion);
+    }
 }

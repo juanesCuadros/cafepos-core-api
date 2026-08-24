@@ -84,6 +84,22 @@ reglas del proyecto que no deben repetirse en cada prompt.
   `hibernate.jdbc.time_zone: UTC`, ya usado en todo el proyecto). Un getter
   `LocalDate` para una columna `DATE` no tiene este problema, solo aplica a
   columnas con zona horaria.
+- **Filtro opcional (fecha, id, etc.) en JPQL con patrón `:param IS NULL OR
+  columna >= :param`: falla en runtime con 500, nunca en compilación.**
+  JPQL genera un `?` de JDBC por cada *ocurrencia* del parámetro con
+  nombre (no uno solo reusado), así que `:param` usado primero en
+  `? IS NULL` y de nuevo en `columna >= ?` son dos bind slots
+  *distintos* para Postgres. Si algún bind slot solo aparece en un
+  `IS NULL` desnudo (sin ningún otro contexto que dé tipo), Postgres no
+  puede inferir su tipo vía el protocolo extendido de JDBC y tira
+  `ERROR: could not determine data type of parameter $1` — se ve como
+  `InvalidDataAccessResourceUsageException` envuelta, cae en el
+  catch-all de `GlobalExceptionHandler` como 500 genérico. Solución:
+  pasar esa query a SQL nativo (`nativeQuery = true`) con
+  `CAST(:param AS tipo)` explícito en **cada** ocurrencia del parámetro,
+  no solo la primera. Ejemplo real ya resuelto: `GET /caja/jornadas` y
+  `GET /ventas`, ambos con `fecha_inicio`/`fecha_fin` opcionales (ver
+  `CajaJornadaJpaRepository.listarEnRango` y `VentaJpaRepository.listar`).
 
 ## DTOs de PATCH (regla obligatoria)
 

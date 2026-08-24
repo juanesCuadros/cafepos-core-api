@@ -5,6 +5,7 @@ import com.cafepos.core.clientes.domain.ClienteBusqueda;
 import com.cafepos.core.clientes.domain.ClienteConVentasException;
 import com.cafepos.core.clientes.domain.ClienteNoEncontradoException;
 import com.cafepos.core.clientes.domain.ClienteNoEliminableException;
+import com.cafepos.core.clientes.domain.ClienteRef;
 import com.cafepos.core.clientes.domain.ClienteRepository;
 import com.cafepos.core.clientes.domain.ClienteResumen;
 import com.cafepos.core.clientes.domain.CompraHistorial;
@@ -17,7 +18,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
+/**
+ * @NamedInterface: expuesto puntualmente para que com.cafepos.core.caja
+ * valide cliente_id y arme el "cliente" de la respuesta al cobrar (ver
+ * buscarParaVenta) — solo cruza ClienteRef (tambien anotado), nunca la
+ * entidad Cliente completa.
+ */
+@org.springframework.modulith.NamedInterface("clienteService")
 @Service
 public class ClienteService {
 
@@ -42,6 +51,12 @@ public class ClienteService {
     @Transactional(readOnly = true)
     public Cliente buscarPorId(Integer id) {
         return clienteRepository.buscarPorId(id).orElseThrow(ClienteNoEncontradoException::new);
+    }
+
+    /** API publica de este modulo para validar cliente_id al cobrar (com.cafepos.core.caja). */
+    @Transactional(readOnly = true)
+    public Optional<ClienteRef> buscarParaVenta(Integer id) {
+        return clienteRepository.buscarPorId(id).map(c -> new ClienteRef(c.getId(), c.getNombre()));
     }
 
     @Transactional

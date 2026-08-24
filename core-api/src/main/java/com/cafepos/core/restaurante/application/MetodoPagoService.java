@@ -12,7 +12,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
+/**
+ * @NamedInterface: expuesto puntualmente para que com.cafepos.core.caja
+ * valide metodo_pago_id al cobrar (ver buscarResumenPorId) — solo cruza
+ * MetodoPagoResumen (tambien anotado), nunca la entidad MetodoPago completa.
+ */
+@org.springframework.modulith.NamedInterface("metodoPagoService")
 @Service
 public class MetodoPagoService {
 
@@ -27,6 +34,14 @@ public class MetodoPagoService {
     @Transactional(readOnly = true)
     public List<MetodoPagoResumen> listar() {
         return metodoPagoRepository.listar();
+    }
+
+    /** API publica de este modulo para validar metodo_pago_id al cobrar (com.cafepos.core.caja). */
+    @Transactional(readOnly = true)
+    public Optional<MetodoPagoResumen> buscarResumenPorId(Integer id) {
+        return metodoPagoRepository.buscarPorId(id)
+                .map(m -> new MetodoPagoResumen(m.getId(), m.getNombre(), m.getIcono(), m.isEsEfectivo(),
+                        m.getEstado()));
     }
 
     @Transactional

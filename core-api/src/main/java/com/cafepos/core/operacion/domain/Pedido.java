@@ -86,4 +86,10 @@ public class Pedido {
     public void moverA(Integer nuevaMesaId) {
         this.mesaId = nuevaMesaId;
     }
+
+    /** Se cierra al cobrarse (POST /ventas, ver com.cafepos.core.caja) — la mesa NO se libera aca. */
+    public void cerrar() {
+        this.estado = ESTADO_CERRADO;
+        this.fechaCierre = OffsetDateTime.now();
+    }
 }

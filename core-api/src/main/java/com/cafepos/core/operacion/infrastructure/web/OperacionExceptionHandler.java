@@ -4,10 +4,13 @@ import com.cafepos.core.operacion.domain.ComboNoEncontradoException;
 import com.cafepos.core.operacion.domain.ComboSeleccionIncompletaException;
 import com.cafepos.core.operacion.domain.ItemInvalidoException;
 import com.cafepos.core.operacion.domain.MesaDestinoNoDisponibleException;
+import com.cafepos.core.operacion.domain.MesaIdNoPermitidoException;
+import com.cafepos.core.operacion.domain.MesaIdObligatorioException;
 import com.cafepos.core.operacion.domain.MesaNoEncontradaException;
 import com.cafepos.core.operacion.domain.MesaOcupadaException;
 import com.cafepos.core.operacion.domain.PedidoItemNoEncontradoException;
 import com.cafepos.core.operacion.domain.PedidoNoEncontradoException;
+import com.cafepos.core.operacion.domain.PedidoSinMesaException;
 import com.cafepos.core.operacion.domain.ProductoAgotadoException;
 import com.cafepos.core.operacion.domain.ProductoNoEncontradoException;
 import com.cafepos.core.operacion.domain.TransicionEstadoInvalidaException;
@@ -96,6 +99,21 @@ public class OperacionExceptionHandler {
 
     @ExceptionHandler(UsuarioSinEmpleadoException.class)
     public ResponseEntity<ErrorResponse> handleUsuarioSinEmpleado(UsuarioSinEmpleadoException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(MesaIdObligatorioException.class)
+    public ResponseEntity<ErrorResponse> handleMesaIdObligatorio(MesaIdObligatorioException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(MesaIdNoPermitidoException.class)
+    public ResponseEntity<ErrorResponse> handleMesaIdNoPermitido(MesaIdNoPermitidoException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(PedidoSinMesaException.class)
+    public ResponseEntity<ErrorResponse> handlePedidoSinMesa(PedidoSinMesaException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));
     }
 }
