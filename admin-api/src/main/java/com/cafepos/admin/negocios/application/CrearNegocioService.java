@@ -41,7 +41,11 @@ import java.util.stream.Collectors;
 @Service
 public class CrearNegocioService {
 
-    private static final int MINUTOS_INACTIVIDAD_DEFAULT = 1440;
+    // 8h (duracion de un turno) — 1440 (24h) equivalia a desactivar el chequeo
+    // de inactividad de RefreshTokenService (core-api), nunca dispara antes de
+    // que el refresh_token expire solo por su propio TTL. Ver V21 en
+    // core-api/db/migration para el mismo ajuste sobre tenants ya creados.
+    private static final int MINUTOS_INACTIVIDAD_DEFAULT = 480;
 
     /** Ver PENDIENTE.md o el prompt original: lista fija acordada de acciones que exigen PIN de step-up. */
     private static final List<String[]> PERMISOS_CON_PIN = List.of(

@@ -113,7 +113,16 @@ public class SecurityConfig {
 
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(RutasAuth.LOGIN, RutasAuth.REFRESH, RutasAuth.LOGOUT, "/menu-publico")
+                        // /ws/** permitAll aca a proposito: SIGUE exigiendo un
+                        // access token valido igual, pero lo valida
+                        // JwtHandshakeInterceptor (shared.websocket) leyendo
+                        // ?token=... del query param — el navegador no puede
+                        // mandar el header Authorization en el handshake inicial
+                        // de un WebSocket. Sin este permitAll, esta cadena HTTP
+                        // normal (que solo sabe leer el header) rechaza el
+                        // handshake con 401 antes de que el interceptor de WS
+                        // llegue a correr.
+                        .requestMatchers(RutasAuth.LOGIN, RutasAuth.REFRESH, RutasAuth.LOGOUT, "/menu-publico", "/ws/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 // Sin esto, Spring Security responde 403 tanto para "no estas
