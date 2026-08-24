@@ -66,7 +66,8 @@ public class KdsService {
                 .filter(i -> estadoFiltro == null || estadoFiltro.equals(i.getEstadoPreparacion()))
                 .map(this::aItemVista)
                 .toList();
-        return new KdsPedidoVista(pedido.getId(), pedido.getNumeroOrden(), mesaNumero, pedido.getTipo(), items);
+        return new KdsPedidoVista(pedido.getId(), pedido.getNumeroOrden(), mesaNumero, pedido.getTipo(),
+                pedido.getFechaEnviado(), items);
     }
 
     private KdsItemVista aItemVista(PedidoItem item) {
