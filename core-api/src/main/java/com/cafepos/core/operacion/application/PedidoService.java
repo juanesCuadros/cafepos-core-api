@@ -269,8 +269,8 @@ public class PedidoService {
                     .orElse("Combo eliminado");
             tasaImpuesto = null;
         }
-        return new PedidoItemParaVenta(item.getProductoId(), item.getComboId(), nombre, item.getCantidad(),
-                item.getPrecioUnitario(), tasaImpuesto);
+        return new PedidoItemParaVenta(item.getId(), item.getProductoId(), item.getComboId(), nombre,
+                item.getCantidad(), item.getPrecioUnitario(), tasaImpuesto, item.getEstadoPreparacion());
     }
 
     private PedidoItem agregarItemProducto(Pedido pedido, Integer productoId, BigDecimal cantidad,

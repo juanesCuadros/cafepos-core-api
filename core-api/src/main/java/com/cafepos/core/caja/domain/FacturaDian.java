@@ -25,6 +25,7 @@ import java.time.OffsetDateTime;
 public class FacturaDian {
 
     public static final String ESTADO_PENDIENTE = "pendiente";
+    public static final String ESTADO_RECHAZADA = "rechazada";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

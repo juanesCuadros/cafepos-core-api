@@ -1,11 +1,15 @@
 package com.cafepos.core.caja.infrastructure.web;
 
 import com.cafepos.core.caja.domain.ClienteNoEncontradoException;
+import com.cafepos.core.caja.domain.DevolucionNoEncontradaException;
+import com.cafepos.core.caja.domain.EstadoFacturaInvalidoException;
+import com.cafepos.core.caja.domain.FacturaNoEncontradaException;
 import com.cafepos.core.caja.domain.JornadaNoAbiertaException;
 import com.cafepos.core.caja.domain.JornadaNoEncontradaException;
 import com.cafepos.core.caja.domain.JornadaYaAbiertaException;
 import com.cafepos.core.caja.domain.MetodoPagoNoEncontradoException;
 import com.cafepos.core.caja.domain.PagoNoCoincideException;
+import com.cafepos.core.caja.domain.PedidoItemNoEncontradoException;
 import com.cafepos.core.caja.domain.PedidoNoEncontradoException;
 import com.cafepos.core.caja.domain.PedidoYaCerradoException;
 import com.cafepos.core.caja.domain.PromocionNoEncontradaException;
@@ -73,6 +77,26 @@ public class CajaExceptionHandler {
 
     @ExceptionHandler(VentaNoEncontradaException.class)
     public ResponseEntity<ErrorResponse> handleVentaNoEncontrada(VentaNoEncontradaException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(FacturaNoEncontradaException.class)
+    public ResponseEntity<ErrorResponse> handleFacturaNoEncontrada(FacturaNoEncontradaException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(EstadoFacturaInvalidoException.class)
+    public ResponseEntity<ErrorResponse> handleEstadoFacturaInvalido(EstadoFacturaInvalidoException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(DevolucionNoEncontradaException.class)
+    public ResponseEntity<ErrorResponse> handleDevolucionNoEncontrada(DevolucionNoEncontradaException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(PedidoItemNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handlePedidoItemNoEncontrado(PedidoItemNoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
     }
 }

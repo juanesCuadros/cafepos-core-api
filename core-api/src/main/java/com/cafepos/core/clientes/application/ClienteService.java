@@ -5,9 +5,11 @@ import com.cafepos.core.clientes.domain.ClienteBusqueda;
 import com.cafepos.core.clientes.domain.ClienteConVentasException;
 import com.cafepos.core.clientes.domain.ClienteNoEncontradoException;
 import com.cafepos.core.clientes.domain.ClienteNoEliminableException;
+import com.cafepos.core.clientes.domain.ClienteParaFactura;
 import com.cafepos.core.clientes.domain.ClienteRef;
 import com.cafepos.core.clientes.domain.ClienteRepository;
 import com.cafepos.core.clientes.domain.ClienteResumen;
+import com.cafepos.core.clientes.domain.ClienteSaldoMovimiento;
 import com.cafepos.core.clientes.domain.CompraHistorial;
 import com.cafepos.core.clientes.domain.SaldoMovimientosVista;
 import com.cafepos.core.shared.codigo.GeneradorCodigo;
@@ -57,6 +59,35 @@ public class ClienteService {
     @Transactional(readOnly = true)
     public Optional<ClienteRef> buscarParaVenta(Integer id) {
         return clienteRepository.buscarPorId(id).map(c -> new ClienteRef(c.getId(), c.getNombre()));
+    }
+
+    /** API publica de este modulo para el detalle/reenvio de facturas DIAN (com.cafepos.core.caja). */
+    @Transactional(readOnly = true)
+    public Optional<ClienteParaFactura> buscarParaFactura(Integer id) {
+        return clienteRepository.buscarPorId(id)
+                .map(c -> new ClienteParaFactura(c.getId(), c.getNombre(), c.getNumeroDocumentoEnmascarado(),
+                        c.getCorreo()));
+    }
+
+    /**
+     * API publica de este modulo para acreditar saldo a favor en una
+     * devolucion donde el item ya se habia preparado (com.cafepos.core.caja,
+     * ver RN-023/024 en api_03_caja.md) — incrementa cliente.saldo_favor Y
+     * deja el rastro en cliente_saldo_movimiento en la misma transaccion
+     * (el caller, VentaService/DevolucionService, decide si hace rollback
+     * de todo si algo mas falla despues).
+     */
+    @Transactional
+    public void acreditarSaldoFavorPorDevolucion(Integer clienteId, BigDecimal monto, Integer devolucionId,
+                                                  Integer usuarioAutorizaId) {
+        Cliente cliente = buscarPorId(clienteId);
+        cliente.acreditarSaldoFavor(monto);
+        clienteRepository.guardar(cliente);
+
+        Integer tenantId = TenantContext.getCurrentTenantId();
+        clienteRepository.guardarMovimientoSaldo(new ClienteSaldoMovimiento(tenantId, clienteId, usuarioAutorizaId,
+                ClienteSaldoMovimiento.TIPO_CREDITO, monto, "devolucion", devolucionId,
+                "Devolución de ítem ya preparado"));
     }
 
     @Transactional

@@ -23,4 +23,6 @@ public interface ClienteRepository {
     List<CompraHistorial> historialDe(Integer clienteId);
 
     List<SaldoMovimientoItem> movimientosDe(Integer clienteId);
+
+    ClienteSaldoMovimiento guardarMovimientoSaldo(ClienteSaldoMovimiento movimiento);
 }

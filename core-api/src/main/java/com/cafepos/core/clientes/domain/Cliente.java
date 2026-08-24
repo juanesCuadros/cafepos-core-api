@@ -83,6 +83,12 @@ public class Cliente {
         return MascaraDocumento.enmascarar(numeroDocumento);
     }
 
+    /** Devolucion con item ya preparado — ver ClienteService.acreditarSaldoFavorPorDevolucion. */
+    public void acreditarSaldoFavor(BigDecimal monto) {
+        this.saldoFavor = this.saldoFavor.add(monto);
+        this.updatedAt = OffsetDateTime.now();
+    }
+
     /**
      * Actualizacion parcial (PATCH) — un campo en null significa "no tocar",
      * salvo telefono/correo/direccion (JsonNullable). tipoDocumento y

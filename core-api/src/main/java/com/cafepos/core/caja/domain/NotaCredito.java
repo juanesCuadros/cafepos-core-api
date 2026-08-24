@@ -42,10 +42,16 @@ public class NotaCredito {
     @Column(nullable = false)
     private OffsetDateTime fecha;
 
-    /** devolucionId siempre null aca — nota credito por anulacion directa de venta, no por devolucion (modulo futuro). */
+    /** devolucionId siempre null aca — nota credito por anulacion directa de venta o de factura, no por devolucion. */
     public NotaCredito(Integer tenantId, Integer facturaId, String motivo, BigDecimal monto) {
+        this(tenantId, facturaId, null, motivo, monto);
+    }
+
+    /** devolucionId no-null — nota credito generada por DevolucionService.solicitar sobre una venta con factura. */
+    public NotaCredito(Integer tenantId, Integer facturaId, Integer devolucionId, String motivo, BigDecimal monto) {
         this.tenantId = tenantId;
         this.facturaId = facturaId;
+        this.devolucionId = devolucionId;
         this.motivo = motivo;
         this.monto = monto;
         this.fecha = OffsetDateTime.now();

@@ -5,6 +5,7 @@ import com.cafepos.core.clientes.domain.ClienteBusqueda;
 import com.cafepos.core.clientes.domain.ClienteDocumentoDuplicadoException;
 import com.cafepos.core.clientes.domain.ClienteRepository;
 import com.cafepos.core.clientes.domain.ClienteResumen;
+import com.cafepos.core.clientes.domain.ClienteSaldoMovimiento;
 import com.cafepos.core.clientes.domain.CompraHistorial;
 import com.cafepos.core.clientes.domain.MascaraDocumento;
 import com.cafepos.core.clientes.domain.SaldoMovimientoItem;
@@ -19,9 +20,12 @@ import java.util.Optional;
 class ClienteRepositoryAdapter implements ClienteRepository {
 
     private final ClienteJpaRepository jpaRepository;
+    private final ClienteSaldoMovimientoJpaRepository saldoMovimientoJpaRepository;
 
-    ClienteRepositoryAdapter(ClienteJpaRepository jpaRepository) {
+    ClienteRepositoryAdapter(ClienteJpaRepository jpaRepository,
+                              ClienteSaldoMovimientoJpaRepository saldoMovimientoJpaRepository) {
         this.jpaRepository = jpaRepository;
+        this.saldoMovimientoJpaRepository = saldoMovimientoJpaRepository;
     }
 
     @Override
@@ -80,5 +84,10 @@ class ClienteRepositoryAdapter implements ClienteRepository {
                         row.getOrigenTipo(), row.getOrigenId(), row.getFecha().atOffset(ZoneOffset.UTC),
                         row.getDescripcion()))
                 .toList();
+    }
+
+    @Override
+    public ClienteSaldoMovimiento guardarMovimientoSaldo(ClienteSaldoMovimiento movimiento) {
+        return saldoMovimientoJpaRepository.save(movimiento);
     }
 }
