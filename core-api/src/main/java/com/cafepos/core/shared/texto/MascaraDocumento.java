@@ -1,9 +1,14 @@
-package com.cafepos.core.clientes.domain;
+package com.cafepos.core.shared.texto;
 
 /**
- * Regla ya establecida en cafepos_MASTER.md: el numero de documento se
- * muestra siempre enmascarado como "••••" (4 caracteres fijos) seguido de
- * los ultimos 4 digitos reales, sin importar la longitud total.
+ * Utilidad generica de enmascarado de documentos/identificadores
+ * sensibles — vivio originalmente en clientes.domain, movida a shared
+ * porque com.cafepos.core.personal (cedula_enmascarada) necesita el
+ * mismo comportamiento exacto y no es logica de negocio propia de
+ * Clientes. Regla ya establecida en cafepos_MASTER.md: el numero de
+ * documento se muestra siempre enmascarado como "••••" (4 caracteres
+ * fijos) seguido de los ultimos 4 digitos reales, sin importar la
+ * longitud total.
  *
  * Caso raro (documento con MENOS de 4 caracteres): en vez de lanzar
  * excepcion o rellenar con datos falsos, se aplica la MISMA formula sin

@@ -233,6 +233,21 @@ reglas del proyecto que no deben repetirse en cada prompt.
 - Nunca acceder a `domain`/`application`/`infrastructure` de otro módulo
   directamente — correr `mvn test -Dtest=ModularityTests` antes de cualquier
   commit importante para confirmar que los límites se respetan.
+- **Dos módulos distintos mapeando la MISMA tabla física con propósito
+  distinto** (ej. `operacion.Turno` para autoregistro del empleado vs
+  `personal.Turno` para gestión Admin/Jefe, ambas mapean `turno`): hay que
+  nombrar EXPLÍCITAMENTE desde el principio tanto el bean de Spring
+  (`@Service("nombreX")` en la clase de servicio, y cualquier otro
+  componente con nombre de clase repetido — controller, repositorio JPA,
+  adapter) como el nombre lógico de la entidad JPA (`@Entity(name =
+  "NombreX")`). El nombre de clase por defecto choca en silencio en
+  ambos casos, pero por mecanismos distintos aunque el síntoma se vea
+  parecido: Spring tira `ConflictingBeanDefinitionException` (bean name
+  duplicado, resuelto por nombre de clase en minúscula) y Hibernate tira
+  `DuplicateMappingException` (registro de nombres de entidad, mecanismo
+  separado del bean name de Spring). Caso real ya resuelto:
+  `operacion.Turno` vs `personal.Turno` (`PersonalTurno` como nombre de
+  entidad JPA y bean de servicio).
 - `shared/` es el único paquete `OPEN` de Modulith (tenant, seguridad,
   auditoría, excepciones) — accesible libremente desde cualquier módulo.
 - Multi-tenancy vía Row Level Security de Postgres, `SET LOCAL
