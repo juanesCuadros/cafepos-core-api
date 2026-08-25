@@ -7,6 +7,7 @@ import com.cafepos.core.caja.domain.CajaMovimientoRepository;
 import com.cafepos.core.caja.domain.JornadaNoAbiertaException;
 import com.cafepos.core.caja.domain.VentaPagoRepository;
 import com.cafepos.core.caja.domain.VentaRepository;
+import com.cafepos.core.shared.auditoria.Auditable;
 import com.cafepos.core.shared.seguridad.Usuario;
 import com.cafepos.core.shared.seguridad.UsuarioRepository;
 import com.cafepos.core.shared.tenant.TenantContext;
@@ -60,8 +61,16 @@ public class CajaJornadaService {
         return registrarMovimiento(jornada, usuarioId, CajaMovimiento.TIPO_INGRESO, monto, motivo);
     }
 
-    /** El chequeo de PIN corre ANTES de esto, en el controller (ver PinStepUpService). */
+    /**
+     * El chequeo de PIN corre ANTES de esto, en el controller (ver
+     * PinStepUpService). entidadIdExpression usa "#result.jornadaId" — el
+     * id de la jornada no es un parametro de este metodo, solo se conoce
+     * despues de resolver jornadaAbierta() adentro (ver AuditoriaAspect,
+     * "#result" disponible ademas de los argumentos). Sin datos_antes: esto
+     * crea un movimiento nuevo, no muta la jornada en si.
+     */
     @Transactional
+    @Auditable(entidadTipo = "caja_jornada", accion = "egreso", entidadIdExpression = "#result.jornadaId")
     public CajaMovimiento egreso(Integer usuarioId, BigDecimal monto, String motivo) {
         CajaJornada jornada = jornadaAbierta();
         return registrarMovimiento(jornada, usuarioId, CajaMovimiento.TIPO_EGRESO, monto, motivo);

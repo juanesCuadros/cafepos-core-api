@@ -13,10 +13,10 @@ import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.context.expression.MethodBasedEvaluationContext;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
-import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -75,7 +75,7 @@ public class AuditoriaAspect {
     }
 
     private void insertarEvento(ProceedingJoinPoint pjp, Auditable auditable, Object resultado) {
-        Integer entidadId = evaluarEntidadId(pjp, auditable);
+        Integer entidadId = evaluarEntidadId(pjp, auditable, resultado);
         /**
          * entidadTipo (concepto de negocio, ej. "venta") no es lo mismo que
          * permiso.modulo (namespace del catalogo RBAC, ej.
@@ -91,7 +91,10 @@ public class AuditoriaAspect {
         Integer permisoId = permisoRepository.findByModuloAndAccion(auditable.entidadTipo(), auditable.accion())
                 .map(Permiso::getId)
                 .orElse(null);
-        JsonNode datosDespues = objectMapper.valueToTree(resultado);
+        /** registrarDespues explicito gana sobre el valor de retorno — ver caso ConfiguracionRolService.actualizarPermisos. */
+        JsonNode datosDespues = AuditoriaContext.obtenerDespues() != null
+                ? AuditoriaContext.obtenerDespues()
+                : objectMapper.valueToTree(resultado);
 
         EventoAuditoria evento = new EventoAuditoria(TenantContext.getCurrentTenantId(), usuarioActualId(),
                 AuditoriaContext.obtenerUsuarioAutoriza(), permisoId, auditable.entidadTipo(), entidadId,
@@ -100,11 +103,20 @@ public class AuditoriaAspect {
         eventoAuditoriaRepository.save(evento);
     }
 
-    private Integer evaluarEntidadId(ProceedingJoinPoint pjp, Auditable auditable) {
+    /**
+     * "#result" disponible en la expresion ademas de los argumentos —
+     * necesario cuando el id de la entidad auditada no es un argumento del
+     * metodo sino parte de lo que devuelve (ej. CajaJornadaService.egreso,
+     * el id de jornada no es parametro; DevolucionService.solicitar, el id
+     * de la devolucion se genera adentro). Mismo patron que "#result" en
+     * @CacheEvict de Spring.
+     */
+    private Integer evaluarEntidadId(ProceedingJoinPoint pjp, Auditable auditable, Object resultado) {
         MethodSignature signature = (MethodSignature) pjp.getSignature();
         Method metodo = signature.getMethod();
-        EvaluationContext contexto = new MethodBasedEvaluationContext(pjp.getTarget(), metodo, pjp.getArgs(),
+        StandardEvaluationContext contexto = new MethodBasedEvaluationContext(pjp.getTarget(), metodo, pjp.getArgs(),
                 parameterNameDiscoverer);
+        contexto.setVariable("result", resultado);
         Expression expression = expressionParser.parseExpression(auditable.entidadIdExpression());
         return expression.getValue(contexto, Integer.class);
     }

@@ -8,6 +8,8 @@ import com.cafepos.core.configuracion.domain.PermisoMatrizItem;
 import com.cafepos.core.configuracion.domain.RolJefeNoEditableException;
 import com.cafepos.core.configuracion.domain.RolNoEncontradoException;
 import com.cafepos.core.configuracion.domain.UsuarioRepository;
+import com.cafepos.core.shared.auditoria.Auditable;
+import com.cafepos.core.shared.auditoria.AuditoriaContext;
 import com.cafepos.core.shared.seguridad.PermisoCacheService;
 import com.cafepos.core.shared.seguridad.Rol;
 import com.cafepos.core.shared.seguridad.RolRepository;
@@ -19,6 +21,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class ConfiguracionRolService {
@@ -69,13 +73,28 @@ public class ConfiguracionRolService {
      * Invalida la cache SIEMPRE al final (aunque cambios este vacio) para
      * mantener el contrato simple — un PATCH con lista vacia es un no-op
      * legitimo, no un error.
+     *
+     * Sin PIN de step-up hoy (no hay PinStepUpService.validar en
+     * RolController) — usuario_autoriza_id en evento_auditoria queda NULL
+     * para esta accion, no es un bug de este cambio.
+     *
+     * datos_antes/datos_despues via registrarDespues (no el valor de
+     * retorno, que es solo un int) — captura la matriz REAL de los
+     * permisos que cambiaron (modulo/accion/activo antes y despues), el
+     * caso de uso mas valioso de @Auditable hasta ahora: quien le dio que
+     * permiso a quien.
      */
     @Transactional
+    @Auditable(entidadTipo = "rol_permiso", accion = "actualizar_permisos", entidadIdExpression = "#rolId")
     public int actualizarPermisos(Integer rolId, List<CambioPermiso> cambios) {
         Rol rol = rolRepository.findById(rolId).orElseThrow(RolNoEncontradoException::new);
         if (!rol.isEsEditable()) {
             throw new RolJefeNoEditableException();
         }
+
+        Set<Integer> permisoIdsCambiados = cambios.stream().map(CambioPermiso::permisoId).collect(Collectors.toSet());
+        AuditoriaContext.registrarAntes(permisosCambiados(rolId, permisoIdsCambiados));
+
         Integer tenantId = TenantContext.getCurrentTenantId();
         for (CambioPermiso cambio : cambios) {
             if (cambio.activo()) {
@@ -85,7 +104,15 @@ public class ConfiguracionRolService {
             }
         }
         permisoCacheService.invalidar(tenantId, rolId);
+
+        AuditoriaContext.registrarDespues(permisosCambiados(rolId, permisoIdsCambiados));
         return (int) usuarioRepository.contarActivosPorRol(rolId);
+    }
+
+    private List<PermisoMatrizItem> permisosCambiados(Integer rolId, Set<Integer> permisoIdsCambiados) {
+        return matrizPermisosRepository.obtenerMatrizCruda(rolId).stream()
+                .filter(item -> permisoIdsCambiados.contains(item.permisoId()))
+                .toList();
     }
 
     private static String moduloPadre(String modulo) {

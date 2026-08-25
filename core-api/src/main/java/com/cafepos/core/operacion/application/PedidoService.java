@@ -31,6 +31,8 @@ import com.cafepos.core.productosmenu.domain.ProductoParaPedido;
 import com.cafepos.core.productosmenu.domain.PromocionSugerida;
 import com.cafepos.core.restaurante.application.ZonaService;
 import com.cafepos.core.restaurante.domain.MesaResumen;
+import com.cafepos.core.shared.auditoria.Auditable;
+import com.cafepos.core.shared.auditoria.AuditoriaContext;
 import com.cafepos.core.shared.codigo.GeneradorCodigo;
 import com.cafepos.core.shared.seguridad.Usuario;
 import com.cafepos.core.shared.seguridad.UsuarioRepository;
@@ -170,8 +172,10 @@ public class PedidoService {
 
     /** El chequeo de PIN corre ANTES de esto, en el controller (ver PinStepUpService). */
     @Transactional
+    @Auditable(entidadTipo = "pedido_item", accion = "eliminar", entidadIdExpression = "#itemId")
     public BigDecimal eliminarItem(Integer pedidoId, Integer itemId) {
         PedidoItem item = buscarItemDePedido(pedidoId, itemId);
+        AuditoriaContext.registrarAntes(item);
         pedidoItemRepository.eliminar(item);
         return recalcularSubtotal(pedidoId);
     }
