@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
 import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
@@ -112,9 +113,27 @@ public class SecurityConfig {
 
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(RutasAuth.LOGIN, RutasAuth.REFRESH, RutasAuth.LOGOUT, "/menu-publico")
+                        // /ws/** permitAll aca a proposito: SIGUE exigiendo un
+                        // access token valido igual, pero lo valida
+                        // JwtHandshakeInterceptor (shared.websocket) leyendo
+                        // ?token=... del query param — el navegador no puede
+                        // mandar el header Authorization en el handshake inicial
+                        // de un WebSocket. Sin este permitAll, esta cadena HTTP
+                        // normal (que solo sabe leer el header) rechaza el
+                        // handshake con 401 antes de que el interceptor de WS
+                        // llegue a correr.
+                        .requestMatchers(RutasAuth.LOGIN, RutasAuth.REFRESH, RutasAuth.LOGOUT, "/menu-publico", "/ws/**")
                         .permitAll()
                         .anyRequest().authenticated())
+                // Sin esto, Spring Security responde 403 tanto para "no estas
+                // autenticado" (token ausente/invalido/vencido) como para "no
+                // tenes permiso" — ambiguo para el cliente, y ademas rompe el
+                // refresh automatico del frontend (httpClient.ts solo reintenta
+                // con un token nuevo cuando ve 401, nunca ante un 403). Con esto,
+                // 401 = no autenticado, 403 = autenticado pero sin permiso.
+                .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) ->
+                        filterErrorWriter.escribir(response, HttpStatus.UNAUTHORIZED.value(),
+                                "Sesión inválida o expirada, inicia sesión nuevamente", "NO_AUTENTICADO")))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

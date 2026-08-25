@@ -52,6 +52,9 @@ public class Pedido {
     @Column(name = "fecha_apertura", nullable = false)
     private OffsetDateTime fechaApertura;
 
+    @Column(name = "fecha_enviado")
+    private OffsetDateTime fechaEnviado;
+
     @Column(name = "fecha_cierre")
     private OffsetDateTime fechaCierre;
 
@@ -74,8 +77,15 @@ public class Pedido {
         return !ESTADO_CERRADO.equals(estado);
     }
 
-    /** Idempotente a proposito: reenviar una comanda ya enviada no es un error. */
+    /**
+     * Idempotente a proposito: reenviar una comanda ya enviada no es un
+     * error. fechaEnviado solo se fija la PRIMERA vez — un reenvio no debe
+     * pisar el momento real en que se mando por primera vez a cocina.
+     */
     public void enviarComanda() {
+        if (this.fechaEnviado == null) {
+            this.fechaEnviado = OffsetDateTime.now();
+        }
         this.estado = ESTADO_ENVIADO;
     }
 

@@ -6,6 +6,17 @@ on:
       - main
   workflow_dispatch:
 
+# Si llegan 2 pushes seguidos, el segundo deploy ESPERA a que termine el
+# primero en vez de correr los dos al mismo tiempo — dos builds de Java sin
+# cache a la vez saturaron el VPS (memoria al 108%, hasta la consola del
+# droplet dejo de responder) el 24-ago-2026. cancel-in-progress: false a
+# proposito: si cancelara el que esta corriendo, podria cortar un
+# `docker compose build` a la mitad, mejor dejarlo terminar y encolar el
+# siguiente.
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Deploy to VPS
@@ -19,6 +30,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
+            set -e
             cd ~/resttodash/backend
             git fetch
             git checkout main

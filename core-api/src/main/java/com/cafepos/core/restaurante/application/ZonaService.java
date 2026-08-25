@@ -11,6 +11,7 @@ import com.cafepos.core.restaurante.domain.ZonaRepository;
 import com.cafepos.core.restaurante.domain.ZonaResumen;
 import com.cafepos.core.shared.codigo.GeneradorCodigo;
 import com.cafepos.core.shared.tenant.TenantContext;
+import com.cafepos.core.shared.websocket.NotificacionesWebSocketService;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,10 +42,13 @@ public class ZonaService {
 
     private final ZonaRepository zonaRepository;
     private final MesaRepository mesaRepository;
+    private final NotificacionesWebSocketService notificacionesWebSocketService;
 
-    public ZonaService(ZonaRepository zonaRepository, MesaRepository mesaRepository) {
+    public ZonaService(ZonaRepository zonaRepository, MesaRepository mesaRepository,
+                        NotificacionesWebSocketService notificacionesWebSocketService) {
         this.zonaRepository = zonaRepository;
         this.mesaRepository = mesaRepository;
+        this.notificacionesWebSocketService = notificacionesWebSocketService;
     }
 
     @Transactional(readOnly = true)
@@ -127,7 +131,12 @@ public class ZonaService {
     public Optional<MesaResumen> cambiarEstadoMesa(Integer id, String nuevoEstado) {
         return mesaRepository.buscarPorId(id).map(mesa -> {
             mesa.actualizar(null, null, null, nuevoEstado);
-            return aResumen(mesaRepository.guardar(mesa));
+            MesaResumen resumen = aResumen(mesaRepository.guardar(mesa));
+            // Unico punto por donde pasan los 4 flujos que mueven una mesa
+            // (abrir pedido, mover mesa, marcar lista_cobrar, finalizar
+            // entrega) — enganchado aca cubre los 4 de una sola vez.
+            notificacionesWebSocketService.mesaActualizada(TenantContext.getCurrentTenantId());
+            return resumen;
         });
     }
 

@@ -17,9 +17,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Ademas de los handlers especificos de abajo, esta clase es la UNICA con
@@ -87,6 +89,23 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PermisoNoEncontradoException.class)
     public ResponseEntity<ErrorResponse> handlePermisoNoEncontrado(PermisoNoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    /**
+     * Ruta que no matchea ningun controller (URL mal escrita) — sin esto,
+     * Spring la trata como intento de servir un recurso estatico, falla, y
+     * caia en el catch-all de mas abajo como 500 generico, indistinguible de
+     * un bug real. Devuelve 404 real.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleRutaNoEncontrada(NoResourceFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("Ruta no encontrada"));
+    }
+
+    /** Verbo HTTP no soportado en una ruta que si existe (ej. DELETE en una ruta que solo tiene GET/POST). */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMetodoNoSoportado(HttpRequestMethodNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(new ErrorResponse(ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

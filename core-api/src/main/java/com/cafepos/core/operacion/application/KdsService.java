@@ -10,6 +10,8 @@ import com.cafepos.core.productosmenu.application.ProductoService;
 import com.cafepos.core.productosmenu.domain.ComboParaPedido;
 import com.cafepos.core.productosmenu.domain.ProductoParaPedido;
 import com.cafepos.core.restaurante.application.ZonaService;
+import com.cafepos.core.shared.tenant.TenantContext;
+import com.cafepos.core.shared.websocket.NotificacionesWebSocketService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,14 +26,17 @@ public class KdsService {
     private final ZonaService zonaService;
     private final ProductoService productoService;
     private final ComboService comboService;
+    private final NotificacionesWebSocketService notificacionesWebSocketService;
 
     public KdsService(PedidoRepository pedidoRepository, PedidoItemRepository pedidoItemRepository,
-                       ZonaService zonaService, ProductoService productoService, ComboService comboService) {
+                       ZonaService zonaService, ProductoService productoService, ComboService comboService,
+                       NotificacionesWebSocketService notificacionesWebSocketService) {
         this.pedidoRepository = pedidoRepository;
         this.pedidoItemRepository = pedidoItemRepository;
         this.zonaService = zonaService;
         this.productoService = productoService;
         this.comboService = comboService;
+        this.notificacionesWebSocketService = notificacionesWebSocketService;
     }
 
     @Transactional(readOnly = true)
@@ -56,6 +61,11 @@ public class KdsService {
                 pedidoRepository.guardar(pedido);
             });
         }
+        Integer tenantId = TenantContext.getCurrentTenantId();
+        notificacionesWebSocketService.kdsActualizado(tenantId);
+        if (todosListos) {
+            notificacionesWebSocketService.pedidoListo(tenantId, item.getPedidoId());
+        }
         return new KdsItemResultado(item.getId(), item.getEstadoPreparacion(), todosListos);
     }
 
@@ -66,7 +76,8 @@ public class KdsService {
                 .filter(i -> estadoFiltro == null || estadoFiltro.equals(i.getEstadoPreparacion()))
                 .map(this::aItemVista)
                 .toList();
-        return new KdsPedidoVista(pedido.getId(), pedido.getNumeroOrden(), mesaNumero, pedido.getTipo(), items);
+        return new KdsPedidoVista(pedido.getId(), pedido.getNumeroOrden(), mesaNumero, pedido.getTipo(),
+                pedido.getFechaEnviado(), items);
     }
 
     private KdsItemVista aItemVista(PedidoItem item) {

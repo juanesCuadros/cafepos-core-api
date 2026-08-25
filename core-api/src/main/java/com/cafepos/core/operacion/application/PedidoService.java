@@ -35,6 +35,7 @@ import com.cafepos.core.shared.codigo.GeneradorCodigo;
 import com.cafepos.core.shared.seguridad.Usuario;
 import com.cafepos.core.shared.seguridad.UsuarioRepository;
 import com.cafepos.core.shared.tenant.TenantContext;
+import com.cafepos.core.shared.websocket.NotificacionesWebSocketService;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,12 +79,14 @@ public class PedidoService {
     private final PromocionService promocionService;
     private final ConfiguracionSistemaService configuracionSistemaService;
     private final UsuarioRepository usuarioRepository;
+    private final NotificacionesWebSocketService notificacionesWebSocketService;
 
     public PedidoService(PedidoRepository pedidoRepository, PedidoItemRepository pedidoItemRepository,
                           ZonaService zonaService, ProductoService productoService, ComboService comboService,
                           PromocionService promocionService,
                           ConfiguracionSistemaService configuracionSistemaService,
-                          UsuarioRepository usuarioRepository) {
+                          UsuarioRepository usuarioRepository,
+                          NotificacionesWebSocketService notificacionesWebSocketService) {
         this.pedidoRepository = pedidoRepository;
         this.pedidoItemRepository = pedidoItemRepository;
         this.zonaService = zonaService;
@@ -92,6 +95,7 @@ public class PedidoService {
         this.promocionService = promocionService;
         this.configuracionSistemaService = configuracionSistemaService;
         this.usuarioRepository = usuarioRepository;
+        this.notificacionesWebSocketService = notificacionesWebSocketService;
     }
 
     @Transactional
@@ -179,6 +183,7 @@ public class PedidoService {
         pedido.enviarComanda();
         pedidoRepository.guardar(pedido);
         String modo = configuracionSistemaService.obtenerModoComanda();
+        notificacionesWebSocketService.kdsActualizado(TenantContext.getCurrentTenantId());
         return new EnviarComandaResultado(modo, items.stream().map(PedidoItem::getId).toList());
     }
 
