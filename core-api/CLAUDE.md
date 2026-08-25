@@ -140,6 +140,19 @@ reglas del proyecto que no deben repetirse en cada prompt.
   no solo la primera. Ejemplo real ya resuelto: `GET /caja/jornadas` y
   `GET /ventas`, ambos con `fecha_inicio`/`fecha_fin` opcionales (ver
   `CajaJornadaJpaRepository.listarEnRango` y `VentaJpaRepository.listar`).
+- **Columna JSON/JSONB mapeada como `JsonNode` vía `@JdbcTypeCode(SqlTypes.JSON)`
+  que nunca se actualiza después de creada: DEBE llevar `@Immutable`
+  (`org.hibernate.annotations`) en el campo.** Sin esto, el
+  dirty-checking de Hibernate 6 no logra un snapshot estable de
+  `JsonNode` y genera un `UPDATE` redundante en cada `INSERT`, aunque el
+  valor nunca haya cambiado. Si la tabla además tiene `REVOKE UPDATE`
+  para el rol de runtime (como `evento_auditoria`, append-only a
+  propósito), ese `UPDATE` fantasma falla con `permission denied` y
+  tumba la transacción completa — un bug que se ve como si la protección
+  append-only estuviera "funcionando", pero por la razón equivocada (el
+  `INSERT` real ya se había ejecutado bien; lo único que fallaba era el
+  `UPDATE` que nunca debió emitirse). Caso real ya resuelto:
+  `EventoAuditoria.datosAntes`/`datosDespues` (`shared.auditoria`).
 
 ## Cifrado de credenciales Factus (riesgo conocido, no resuelto)
 
