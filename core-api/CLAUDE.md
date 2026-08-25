@@ -25,6 +25,31 @@ reglas del proyecto que no deben repetirse en cada prompt.
   // el mensaje de excepcion SI lleva tildes, es texto para el usuario
   ```
 
+## Tests: sufijo `Test` vs `IT` (convención obligatoria)
+
+- **Todo test que necesite Postgres real (u otra infraestructura externa)
+  DEBE terminar en `IT`** (ej. `PermisoEvaluatorIT`,
+  `FacturacionDianResolucionEncriptacionIT`) — nunca `Test` ni
+  `IntegrationTest`. Un test unitario normal (sin infraestructura externa,
+  incluido `ModularityTests` — verifica límites entre módulos con
+  análisis estático de Spring Modulith, no toca la base) sigue terminando
+  en `Test` como siempre.
+- El motivo es el patrón de include/exclude por defecto de cada plugin:
+  `maven-surefire-plugin` (`mvn test`/`mvn package`) matchea
+  `**/*Test.java` (entre otros) pero NUNCA `**/*IT.java`;
+  `maven-failsafe-plugin` (`mvn verify`, configurado en el `pom.xml` de
+  este módulo) matchea `**/*IT.java` y corre en las fases
+  `integration-test`/`verify`. Respetar el sufijo alcanza — no hace falta
+  ninguna exclusión manual (`-Dtest='!Xyz'`) en ningún lado, ni en el
+  `Dockerfile` ni en CI.
+- El `Dockerfile` corre `./mvnw package` sin ninguna exclusión — como
+  `package` nunca ejecuta `*IT`, la imagen se construye sin acceso a
+  Postgres real automáticamente, por convención de nombre, no por lista
+  mantenida a mano.
+- Para correr las `*IT` hace falta Postgres dev levantado
+  (`docker compose up -d`) y perfil `dev`: `mvn verify` (o
+  `-Dtest=NombreIT mvn verify` para una sola).
+
 ## Migraciones Flyway (regla crítica, no negociable)
 
 - **Nunca editar un archivo de migración ya aplicado.** Antes de tocar
@@ -38,6 +63,21 @@ reglas del proyecto que no deben repetirse en cada prompt.
 - Migraciones aplicadas hasta ahora: V1 (schema completo), V2 (catálogo de
   permisos), V3 (tabla `event_publication` de Spring Modulith), V4
   (`usuario.debe_cambiar_password`).
+- **Después de cualquier `git merge`/`pull` que toque archivos de
+  `db/migration/`, correr SIEMPRE `mvn clean compile` antes de arrancar la
+  app — nunca `spring-boot:run` directo.** Maven no limpia
+  `target/classes/db/migration/` entre corridas, así que un archivo
+  renombrado o eliminado en el merge puede seguir existiendo ahí como
+  copia vieja. Flyway escanea el classpath (`target/classes`), no
+  `src/main/resources` directamente, así que ve esa copia vieja como una
+  migración "resuelta" sin fila en `flyway_schema_history` y falla la
+  validación con `Detected resolved migration not applied to database` —
+  un falso positivo confuso (parece un problema real de sincronización de
+  versiones cuando es solo un artefacto de build viejo). Ya confirmado
+  real dos veces en este proyecto: una vez con un rename propio de
+  migraciones, otra con un merge real de dos personas. `mvn clean
+  compile` (o `clean` antes de cualquier goal) elimina la copia vieja y
+  el problema desaparece.
 - `spring.jpa.hibernate.ddl-auto` es **siempre** `validate`. Nunca cambiar a
   `update` o `create` — el schema real vive únicamente en las migraciones
   Flyway, Hibernate solo confirma que las entidades coinciden con él.

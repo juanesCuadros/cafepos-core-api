@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("dev")
-class PermisoEvaluatorIntegrationTest {
+class PermisoEvaluatorIT {
 
     private static final Integer TENANT_CAFE_DE_PRUEBA = 6;
     private static final Integer ROL_JEFE = 1;

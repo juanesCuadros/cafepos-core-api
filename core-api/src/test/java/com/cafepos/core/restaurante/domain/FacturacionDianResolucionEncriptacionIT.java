@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * escribir esos dos campos, incluso desde un test.
  *
  * Nunca hay HTTP de por medio, asi que TenantContext se fija a mano antes
- * de cada llamada al repositorio — mismo patron que PermisoEvaluatorIntegrationTest.
+ * de cada llamada al repositorio — mismo patron que PermisoEvaluatorIT.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("dev")

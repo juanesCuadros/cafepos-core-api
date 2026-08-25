@@ -247,6 +247,26 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <!-- Convención de sufijo (ver CLAUDE.md): *Test = unitario, corre
+                     con surefire en "mvn test"/"mvn package" (sin infraestructura
+                     externa). *IT = integración real (necesita Postgres dev
+                     levantado), corre con failsafe SOLO en "mvn verify" — nunca en
+                     "package", que es lo que usa el Dockerfile. No hace falta
+                     declarar includes/excludes: los patrones default de failsafe
+                     (**/*IT.java) y de surefire (**/*Test.java, nunca matchea
+                     *IT.java) ya dividen los dos grupos por nombre de archivo. -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>

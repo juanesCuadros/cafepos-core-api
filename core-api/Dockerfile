@@ -8,14 +8,14 @@ COPY src src
 # Sin -DskipTests a proposito: incluye ModularityTests, gate obligatorio
 # antes de construir la imagen. Si un test falla, el build de Docker falla.
 #
-# Excepcion puntual: PermisoEvaluatorIntegrationTest necesita un Postgres real
-# ya poblado (tenant de prueba + catalogo de permisos sembrado en
-# localhost:5434), inalcanzable dentro de este build aislado sin red hacia
-# ningun servicio. No es un test que deba correr aca — sigue corriendo normal
-# en una maquina de desarrollo con el Postgres de docker-compose.yml levantado
-# (mvn test, sin exclusion). Unica prueba excluida; ModularityTests y el resto
-# del gate siguen obligatorios.
-RUN ./mvnw package -q -Dtest='!PermisoEvaluatorIntegrationTest'
+# Sin exclusion manual de tests: la convencion de sufijo (ver CLAUDE.md)
+# ya resuelve esto sola. *Test = unitario, corre aca via surefire (mvn
+# package). *IT = integracion real (necesita Postgres real, inalcanzable
+# en este build aislado sin red hacia ningun servicio) — failsafe solo las
+# corre en "mvn verify", nunca en "package", asi que ni siquiera se
+# intentan aca. Sigue corriendo normal en una maquina de desarrollo con
+# Postgres de docker-compose.yml levantado (mvn verify).
+RUN ./mvnw package -q
 
 # Stage 2: runtime
 FROM eclipse-temurin:21-jre-alpine
