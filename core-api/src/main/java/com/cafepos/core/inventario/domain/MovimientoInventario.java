@@ -34,6 +34,9 @@ public class MovimientoInventario {
     public static final String TIPO_AJUSTE = "ajuste";
     public static final String TIPO_PERDIDA = "perdida";
     public static final String TIPO_AJUSTE_CONTEO = "ajuste_conteo";
+    /** Exclusivos de com.cafepos.core.compras — entrada al registrar una compra, salida al anularla. */
+    public static final String TIPO_ENTRADA = "entrada";
+    public static final String TIPO_SALIDA = "salida";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

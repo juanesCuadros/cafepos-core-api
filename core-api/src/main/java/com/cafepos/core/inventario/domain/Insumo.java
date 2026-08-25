@@ -68,7 +68,7 @@ public class Insumo {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    /** Se crea SIEMPRE con stockActual=0 y costoActual=0 — se llenan recien con la primera compra (modulo Compras, no existe todavia). */
+    /** Se crea SIEMPRE con stockActual=0 y costoActual=0 — se llenan recien con la primera compra (ver com.cafepos.core.compras). */
     public Insumo(Integer tenantId, Integer categoriaInsumoId, String nombre, String unidadMedida,
                   BigDecimal stockMinimo, BigDecimal stockMaximo, LocalDate fechaVencimRef, String estado) {
         this.tenantId = tenantId;
@@ -124,9 +124,15 @@ public class Insumo {
         this.updatedAt = OffsetDateTime.now();
     }
 
-    /** Usado por ajustes, perdidas y conteos — el costo lo actualiza unicamente el modulo Compras (no existe todavia). */
+    /** Usado por ajustes, perdidas, conteos y compras — siempre con el valor ABSOLUTO nuevo, el caller calcula el delta. */
     public void actualizarStock(BigDecimal nuevoStock) {
         this.stockActual = nuevoStock;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    /** Unico mutador de costo_actual — exclusivo de com.cafepos.core.compras (ver InsumoService.registrarEntradaPorCompra/revertirPorAnulacionCompra). Sobreescribe, nunca promedio ponderado. */
+    public void actualizarCostoActual(BigDecimal nuevoCosto) {
+        this.costoActual = nuevoCosto;
         this.updatedAt = OffsetDateTime.now();
     }
 

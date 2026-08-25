@@ -16,9 +16,10 @@ import java.time.OffsetDateTime;
 
 /**
  * Mapea lote_insumo (ver V1__schema_v4.sql, Modulo 5.6 de
- * api_05_inventario.md) — SOLO LECTURA desde este modulo, sin metodo
- * crear() a proposito: los lotes los genera el modulo Compras (todavia no
- * existe), este modulo unicamente los consulta para vencimientos.
+ * api_05_inventario.md). crear()/agotar() son API publica de este modulo
+ * EXCLUSIVA para com.cafepos.core.compras (ver LoteInsumoService,
+ * tambien @NamedInterface) — este modulo en si sigue sin UI propia para
+ * escribir lotes, solo los consulta para vencimientos.
  */
 @Entity
 @Table(name = "lote_insumo")
@@ -53,4 +54,23 @@ public class LoteInsumo {
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
+
+    public static LoteInsumo crear(Integer tenantId, Integer insumoId, Integer compraDetalleId, String numeroLote,
+                                    LocalDate fechaVencimiento, BigDecimal cantidad) {
+        LoteInsumo lote = new LoteInsumo();
+        lote.tenantId = tenantId;
+        lote.insumoId = insumoId;
+        lote.compraDetalleId = compraDetalleId;
+        lote.numeroLote = numeroLote;
+        lote.fechaVencimiento = fechaVencimiento;
+        lote.cantidadInicial = cantidad;
+        lote.cantidadActual = cantidad;
+        lote.createdAt = OffsetDateTime.now();
+        return lote;
+    }
+
+    /** "inactivo" para este modulo es cantidad_actual=0 — mismo criterio que ya usa VencimientoJpaRepository. */
+    public void agotar() {
+        this.cantidadActual = BigDecimal.ZERO;
+    }
 }
