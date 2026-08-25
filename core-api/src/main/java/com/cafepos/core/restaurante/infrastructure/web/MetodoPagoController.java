@@ -41,7 +41,8 @@ public class MetodoPagoController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Crea un metodo de pago")
     public MetodoPagoCreadoResponse crear(@Valid @RequestBody MetodoPagoCrearRequest request) {
-        MetodoPago metodoPago = metodoPagoService.crear(request.nombre(), request.icono(), request.estado());
+        MetodoPago metodoPago = metodoPagoService.crear(request.nombre(), request.icono(), request.estado(),
+                request.codigoFactus());
         return MetodoPagoCreadoResponse.de(metodoPago);
     }
 
@@ -51,7 +52,7 @@ public class MetodoPagoController {
     public MetodoPagoCreadoResponse actualizar(@PathVariable Integer id,
                                                 @Valid @RequestBody MetodoPagoActualizarRequest request) {
         MetodoPago metodoPago = metodoPagoService.actualizar(id, request.icono(), request.nombre(),
-                request.estado());
+                request.estado(), request.codigoFactus());
         return MetodoPagoCreadoResponse.de(metodoPago);
     }
 

@@ -8,5 +8,6 @@ package com.cafepos.core.restaurante.domain;
  * cerrar jornada — ver MetodoPagoService (tambien anotado).
  */
 @org.springframework.modulith.NamedInterface("metodoPagoResumen")
-public record MetodoPagoResumen(Integer id, String nombre, String icono, boolean esEfectivo, String estado) {
+public record MetodoPagoResumen(Integer id, String nombre, String icono, boolean esEfectivo, String estado,
+                                 String codigoFactus) {
 }

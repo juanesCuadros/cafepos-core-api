@@ -8,5 +8,6 @@ public record MetodoPagoCrearRequest(
         String nombre,
 
         String icono,
-        String estado) {
+        String estado,
+        String codigoFactus) {
 }

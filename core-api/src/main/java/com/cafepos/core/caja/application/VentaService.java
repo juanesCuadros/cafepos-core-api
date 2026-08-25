@@ -29,9 +29,8 @@ import com.cafepos.core.restaurante.application.FacturacionDianService;
 import com.cafepos.core.restaurante.application.MetodoPagoService;
 import com.cafepos.core.restaurante.domain.NumeroFacturaReservado;
 import com.cafepos.core.shared.codigo.GeneradorCodigo;
+import com.cafepos.core.shared.impuestos.ResolverTasaImpuesto;
 import com.cafepos.core.shared.tenant.TenantContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,8 +38,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Endpoint central del modulo (Parte 4 y 5). Llama directamente (sincrono,
@@ -62,11 +59,6 @@ public class VentaService {
     /** Tolerancia de redondeo aceptada entre suma de pagos y total calculado (1 centavo). */
     private static final BigDecimal TOLERANCIA_PAGOS = new BigDecimal("0.01");
 
-    private static final String TASA_EXENTO = "Exento";
-    private static final Pattern PATRON_TASA_PORCENTAJE = Pattern.compile("(\\d+(?:[.,]\\d+)?)\\s*%");
-
-    private static final Logger log = LoggerFactory.getLogger(VentaService.class);
-
     private final VentaRepository ventaRepository;
     private final VentaPagoRepository ventaPagoRepository;
     private final VentaPromocionRepository ventaPromocionRepository;
@@ -78,6 +70,7 @@ public class VentaService {
     private final ClienteService clienteService;
     private final FacturacionDianService facturacionDianService;
     private final ConfiguracionSistemaService configuracionSistemaService;
+    private final FacturaDianTransmisionService facturaDianTransmisionService;
 
     public VentaService(VentaRepository ventaRepository, VentaPagoRepository ventaPagoRepository,
                          VentaPromocionRepository ventaPromocionRepository,
@@ -85,7 +78,8 @@ public class VentaService {
                          PedidoService pedidoService, PromocionService promocionService,
                          MetodoPagoService metodoPagoService, ClienteService clienteService,
                          FacturacionDianService facturacionDianService,
-                         ConfiguracionSistemaService configuracionSistemaService) {
+                         ConfiguracionSistemaService configuracionSistemaService,
+                         FacturaDianTransmisionService facturaDianTransmisionService) {
         this.ventaRepository = ventaRepository;
         this.ventaPagoRepository = ventaPagoRepository;
         this.ventaPromocionRepository = ventaPromocionRepository;
@@ -97,6 +91,7 @@ public class VentaService {
         this.clienteService = clienteService;
         this.facturacionDianService = facturacionDianService;
         this.configuracionSistemaService = configuracionSistemaService;
+        this.facturaDianTransmisionService = facturaDianTransmisionService;
     }
 
     /** Usado por el controller ANTES de ejecutar cobrar() — chequeo de permiso dinamico, ver PermisoRequerido. */
@@ -162,7 +157,7 @@ public class VentaService {
         for (PedidoItemParaVenta item : pedido.items()) {
             BigDecimal itemSubtotal = item.precioUnitario().multiply(item.cantidad());
             subtotalRaw = subtotalRaw.add(itemSubtotal);
-            BigDecimal tasa = resolverTasa(item.tasaImpuesto(), incPorcentajeDefault);
+            BigDecimal tasa = ResolverTasaImpuesto.tasa(item.tasaImpuesto(), incPorcentajeDefault);
             impuestosSinDescuento = impuestosSinDescuento.add(
                     itemSubtotal.multiply(tasa).divide(CIEN, 6, RoundingMode.HALF_UP));
         }
@@ -235,7 +230,10 @@ public class VentaService {
      * cliente queda asociado igual, sin factura. El prefijo y el
      * resolucion_id son los REALES de esa resolucion especifica (nunca un
      * "FE" hardcodeado aca — distintos tenants pueden tener prefijos
-     * distintos asignados por la DIAN).
+     * distintos asignados por la DIAN). Si SI se crea la factura, programa
+     * el intento real de transmision a Factus para DESPUES de que esta
+     * transaccion confirme (ver FacturaDianTransmisionService.programarTransmisionTrasCommit)
+     * — nunca antes, y nunca bloqueando la respuesta de este metodo.
      */
     private FacturaResumen emitirFacturaSiCorresponde(Integer tenantId, Integer ventaId) {
         Optional<NumeroFacturaReservado> reserva = facturacionDianService.reservarSiguienteNumeroFactura();
@@ -246,28 +244,8 @@ public class VentaService {
         String numeroFactura = GeneradorCodigo.generar(r.prefijo(), r.numero(), PADDING_FACTURA);
         FacturaDian factura = new FacturaDian(tenantId, ventaId, r.resolucionId(), numeroFactura);
         factura = facturaDianRepository.guardar(factura);
+        facturaDianTransmisionService.programarTransmisionTrasCommit(factura.getId(), tenantId);
         return new FacturaResumen(factura.getId(), factura.getNumeroFactura(), factura.getEstadoDian());
-    }
-
-    /**
-     * IVA/INC — ver DECISIONES YA TOMADAS de la conversacion "Modulo Caja".
-     * "Exento" -> 0%. null -> default del tenant. Texto no parseable ->
-     * default del tenant + WARN (nunca falla la venta por esto).
-     */
-    private BigDecimal resolverTasa(String tasaImpuestoTexto, BigDecimal defaultIncPorcentaje) {
-        if (tasaImpuestoTexto == null) {
-            return defaultIncPorcentaje;
-        }
-        if (TASA_EXENTO.equalsIgnoreCase(tasaImpuestoTexto.trim())) {
-            return BigDecimal.ZERO;
-        }
-        Matcher matcher = PATRON_TASA_PORCENTAJE.matcher(tasaImpuestoTexto);
-        if (matcher.find()) {
-            return new BigDecimal(matcher.group(1).replace(',', '.'));
-        }
-        log.warn("producto.tasa_impuesto con formato inesperado: '{}' - usando el default del tenant ({}%)",
-                tasaImpuestoTexto, defaultIncPorcentaje);
-        return defaultIncPorcentaje;
     }
 
     @Transactional

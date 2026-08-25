@@ -1,9 +1,11 @@
 package com.cafepos.admin.negocios.infrastructure.web;
 
 import com.cafepos.admin.negocios.application.CrearNegocioService;
+import com.cafepos.admin.negocios.application.FacturacionDianAdminService;
 import com.cafepos.admin.negocios.application.NegocioCreado;
 import com.cafepos.admin.negocios.application.VencimientoPruebaService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,6 +13,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,13 +27,16 @@ public class NegocioController {
 
     private final CrearNegocioService crearNegocioService;
     private final VencimientoPruebaService vencimientoPruebaService;
+    private final FacturacionDianAdminService facturacionDianAdminService;
     private final String tenantBaseDomain;
 
     public NegocioController(CrearNegocioService crearNegocioService,
                               VencimientoPruebaService vencimientoPruebaService,
+                              FacturacionDianAdminService facturacionDianAdminService,
                               @Value("${cafepos.tenant.base-domain}") String tenantBaseDomain) {
         this.crearNegocioService = crearNegocioService;
         this.vencimientoPruebaService = vencimientoPruebaService;
+        this.facturacionDianAdminService = facturacionDianAdminService;
         this.tenantBaseDomain = tenantBaseDomain;
     }
 
@@ -77,5 +83,27 @@ public class NegocioController {
     })
     public VencimientoPruebaResponse vencimientoPrueba() {
         return VencimientoPruebaResponse.de(vencimientoPruebaService.ejecutar());
+    }
+
+    @PostMapping("/{tenantId}/facturacion-dian")
+    @Operation(
+            summary = "Configura las credenciales Factus de un negocio (herramienta permanente de Super Admin)",
+            description = "Alta o actualizacion (busca-o-crea) de facturacion_dian_resolucion para el tenant_id "
+                    + "dado. client_id/client_secret/username/password quedan cifrados con AES-256-GCM (nunca en "
+                    + "texto plano) — es core-api quien los descifra despues para llamar a Factus de verdad desde "
+                    + "POST /ventas, usando la MISMA llave de cifrado. Requiere JWT de Super Admin.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Credenciales guardadas"),
+            @ApiResponse(responseCode = "400", description = "Datos invalidos (ambiente distinto de sandbox/produccion, campos faltantes)"),
+            @ApiResponse(responseCode = "401", description = "Falta el access token o no es valido"),
+            @ApiResponse(responseCode = "404", description = "tenant_id no corresponde a ningun negocio registrado")
+    })
+    public FacturacionDianResponse configurarFacturacionDian(
+            @Parameter(description = "id del tenant a configurar") @PathVariable Integer tenantId,
+            @Valid @RequestBody FacturacionDianRequest request) {
+        facturacionDianAdminService.configurarCredenciales(tenantId, request.ambiente(), request.clientId(),
+                request.clientSecret(), request.username(), request.password(), request.rangoInicio(),
+                request.rangoFin());
+        return new FacturacionDianResponse(tenantId, true);
     }
 }

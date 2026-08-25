@@ -15,6 +15,12 @@ cafepos:
   admin:
     jwt:
       signing-key: dev-only-admin-signing-key-nunca-usar-en-produccion-cambiar-por-variable-de-entorno
+  factus:
+    # MISMO valor, copiado tal cual, que cafepos.factus.encryption-key en
+    # core-api/src/main/resources/application-dev.yml — CRITICO que
+    # coincida (ver shared.criptografia.FactusCredencialesCryptoService):
+    # admin-api cifra, core-api descifra, con la misma llave.
+    encryption-key: MvywKIMVe+RWrI7GSnt+1aSf9znpzXRFIPxmeQ+psQU=
 
 # Swagger UI / OpenAPI — habilitado SOLO en dev (ver application.yml, donde
 # queda deshabilitado por defecto).

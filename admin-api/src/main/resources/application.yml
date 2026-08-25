@@ -2,6 +2,15 @@ spring:
   application:
     name: admin-api
 
+  # Mismo casing que core-api (ver su application.yml) — todo JSON de
+  # request/response usa snake_case, los campos Java se quedan en camelCase
+  # normal, Jackson convierte solo. Sin esto, este servicio respondia en
+  # camelCase (accessToken, tenantId) mientras core-api siempre respondio
+  # en snake_case (access_token, tenant_id) — inconsistencia real para
+  # cualquier cliente que hable con los dos servicios.
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
   # No Flyway en este proyecto: el schema ya existe (lo crea y versiona
   # core-api). ddl-auto=validate confirma que la entidad Superadmin y
   # SuperadminRefreshToken coinciden con las tablas reales, nunca las crea.
@@ -46,6 +55,12 @@ cafepos:
       access-token-ttl-minutes: 10
     refresh-token:
       ttl-days: 7
+  factus:
+    # MISMA property name y MISMA variable de entorno que core-api (ver su
+    # application.yml) — en cualquier ambiente real, CAFEPOS_FACTUS_ENCRYPTION_KEY
+    # debe apuntar al mismo valor en los dos servicios, o core-api nunca va
+    # a poder descifrar lo que admin-api cifro.
+    encryption-key: ${CAFEPOS_FACTUS_ENCRYPTION_KEY}
   tenant:
     # Dominio publico bajo el que se sirve cada negocio (POST /admin/negocios
     # arma la url de vuelta con este valor: https://{slug}.{base-domain}).

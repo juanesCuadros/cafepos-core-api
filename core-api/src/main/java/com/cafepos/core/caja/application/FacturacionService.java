@@ -7,6 +7,7 @@ import com.cafepos.core.caja.domain.FacturaListadoItem;
 import com.cafepos.core.caja.domain.FacturaNoEncontradaException;
 import com.cafepos.core.caja.domain.NotaCredito;
 import com.cafepos.core.caja.domain.NotaCreditoRepository;
+import com.cafepos.core.caja.domain.ResultadoTransmisionFactus;
 import com.cafepos.core.caja.domain.Venta;
 import com.cafepos.core.caja.domain.VentaNoEncontradaException;
 import com.cafepos.core.caja.domain.VentaRepository;
@@ -25,9 +26,9 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Facturacion (api_03_caja.md 3.6). reenviar-correo y reintentar-envio son
- * stubs a proposito — sin proveedor de correo real ni transmision real a
- * Factus en esta version, ver los comentarios de cada metodo.
+ * Facturacion (api_03_caja.md 3.6). reenviar-correo sigue siendo un stub a
+ * proposito (sin proveedor de correo real, ver su Javadoc) — reintentar-envio
+ * SI ejecuta la transmision real a Factus (ver FacturaDianTransmisionService).
  */
 @Service
 public class FacturacionService {
@@ -41,13 +42,16 @@ public class FacturacionService {
     private final VentaRepository ventaRepository;
     private final NotaCreditoRepository notaCreditoRepository;
     private final ClienteService clienteService;
+    private final FacturaDianTransmisionService facturaDianTransmisionService;
 
     public FacturacionService(FacturaDianRepository facturaDianRepository, VentaRepository ventaRepository,
-                               NotaCreditoRepository notaCreditoRepository, ClienteService clienteService) {
+                               NotaCreditoRepository notaCreditoRepository, ClienteService clienteService,
+                               FacturaDianTransmisionService facturaDianTransmisionService) {
         this.facturaDianRepository = facturaDianRepository;
         this.ventaRepository = ventaRepository;
         this.notaCreditoRepository = notaCreditoRepository;
         this.clienteService = clienteService;
+        this.facturaDianTransmisionService = facturaDianTransmisionService;
     }
 
     @Transactional(readOnly = true)
@@ -94,20 +98,32 @@ public class FacturacionService {
     }
 
     /**
-     * STUB: sin transmision real a Factus en esta version — no hay nada que
-     * reintentar de verdad, estado_dian queda IGUAL. Solo aplica si el
-     * estado actual es 'pendiente' o 'rechazada' (400 en cualquier otro caso).
+     * Reintento REAL — solo aplica si el estado actual es 'pendiente' o
+     * 'rechazada' (400 en cualquier otro caso). El intento a Factus corre
+     * SINCRONICAMENTE aca (a diferencia del intento automatico tras
+     * POST /ventas): esta es una accion manual explicita del usuario, que
+     * espera ver el resultado real en la respuesta. Un fallo de Factus
+     * (credenciales, timeout, red, rechazo) NO tira 500 — el mensaje
+     * refleja el resultado real y estado_dian queda como haya quedado (ver
+     * FacturaDianTransmisionService.transmitir, nunca propaga excepciones).
      */
-    @Transactional(readOnly = true)
     public ReintentarEnvioResultado reintentarEnvio(Integer id) {
         FacturaDian factura = buscarFactura(id);
         if (!ESTADOS_REINTENTABLES.contains(factura.getEstadoDian())) {
             throw new EstadoFacturaInvalidoException();
         }
-        log.info("[STUB reintentar-envio] Factura {} — sin transmision real a Factus conectada",
-                factura.getNumeroFactura());
-        return new ReintentarEnvioResultado(factura.getId(), factura.getEstadoDian(),
-                "Reintentando transmision a la DIAN");
+        ResultadoTransmisionFactus resultado = facturaDianTransmisionService.transmitir(id);
+        FacturaDian actualizada = buscarFactura(id);
+        String mensaje = mensajeDe(resultado);
+        return new ReintentarEnvioResultado(actualizada.getId(), actualizada.getEstadoDian(), mensaje);
+    }
+
+    private String mensajeDe(ResultadoTransmisionFactus resultado) {
+        if (!resultado.exitoso()) {
+            return "No se pudo transmitir la factura a la DIAN: " + resultado.mensajeError();
+        }
+        return resultado.validado() ? "Factura aceptada por la DIAN"
+                : "Factura transmitida pero rechazada por la DIAN";
     }
 
     /**

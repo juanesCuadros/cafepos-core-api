@@ -260,17 +260,20 @@ public class PedidoService {
     private PedidoItemParaVenta aItemParaVenta(PedidoItem item) {
         String nombre;
         String tasaImpuesto;
+        String codigo;
         if (item.getProductoId() != null) {
             ProductoParaPedido producto = productoService.buscarParaPedido(item.getProductoId()).orElse(null);
             nombre = producto != null ? producto.nombre() : "Producto eliminado";
             tasaImpuesto = producto != null ? producto.tasaImpuesto() : null;
+            codigo = producto != null ? producto.codigo() : null;
         } else {
-            nombre = comboService.buscarParaPedido(item.getComboId()).map(ComboParaPedido::nombre)
-                    .orElse("Combo eliminado");
+            ComboParaPedido combo = comboService.buscarParaPedido(item.getComboId()).orElse(null);
+            nombre = combo != null ? combo.nombre() : "Combo eliminado";
             tasaImpuesto = null;
+            codigo = combo != null ? combo.codigo() : null;
         }
         return new PedidoItemParaVenta(item.getId(), item.getProductoId(), item.getComboId(), nombre,
-                item.getCantidad(), item.getPrecioUnitario(), tasaImpuesto, item.getEstadoPreparacion());
+                item.getCantidad(), item.getPrecioUnitario(), tasaImpuesto, item.getEstadoPreparacion(), codigo);
     }
 
     private PedidoItem agregarItemProducto(Pedido pedido, Integer productoId, BigDecimal cantidad,

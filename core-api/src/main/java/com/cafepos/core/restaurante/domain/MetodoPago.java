@@ -47,18 +47,23 @@ public class MetodoPago {
     @Column(nullable = false)
     private String estado;
 
+    /** payment_method_code que exige Factus en payment_details[] al transmitir una factura — ver caja.infrastructure.factus. */
+    @Column(name = "codigo_factus")
+    private String codigoFactus;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    public MetodoPago(Integer tenantId, String nombre, String icono, String estado) {
+    public MetodoPago(Integer tenantId, String nombre, String icono, String estado, String codigoFactus) {
         this.tenantId = tenantId;
         this.nombre = nombre;
         this.icono = icono;
         this.esEfectivo = false;
         this.estado = estado != null ? estado : ESTADO_ACTIVO;
+        this.codigoFactus = codigoFactus;
         OffsetDateTime ahora = OffsetDateTime.now();
         this.createdAt = ahora;
         this.updatedAt = ahora;
@@ -71,7 +76,8 @@ public class MetodoPago {
      * llamar aca, no esta entity method — asi el 403 se lanza sin tocar
      * ningun campo, ni siquiera los que si serian validos.
      */
-    public void actualizar(JsonNullable<String> icono, String nombre, String estado) {
+    public void actualizar(JsonNullable<String> icono, String nombre, String estado,
+                            JsonNullable<String> codigoFactus) {
         if (icono.isPresent()) {
             this.icono = icono.get();
         }
@@ -80,6 +86,9 @@ public class MetodoPago {
         }
         if (estado != null) {
             this.estado = estado;
+        }
+        if (codigoFactus.isPresent()) {
+            this.codigoFactus = codigoFactus.get();
         }
         this.updatedAt = OffsetDateTime.now();
     }

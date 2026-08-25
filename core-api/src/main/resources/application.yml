@@ -77,5 +77,11 @@ cafepos:
     ttl-hours: 24
   pin-authorization:
     token-ttl-minutes: 2
+  factus:
+    # AES-256 en Base64 (32 bytes decodificados) — generar con
+    # openssl rand -base64 32. Cifra client_id_factus/client_secret_factus
+    # (ver shared.criptografia) — inyectada via variable de entorno, nunca
+    # hardcodeada, mismo patron que cafepos.jwt.signing-key.
+    encryption-key: ${CAFEPOS_FACTUS_ENCRYPTION_KEY}
   tenant:
     base-domain: resttodash.app   # resuelve {slug}.cafepos.com → tenant_id

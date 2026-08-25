@@ -41,23 +41,24 @@ public class MetodoPagoService {
     public Optional<MetodoPagoResumen> buscarResumenPorId(Integer id) {
         return metodoPagoRepository.buscarPorId(id)
                 .map(m -> new MetodoPagoResumen(m.getId(), m.getNombre(), m.getIcono(), m.isEsEfectivo(),
-                        m.getEstado()));
+                        m.getEstado(), m.getCodigoFactus()));
     }
 
     @Transactional
-    public MetodoPago crear(String nombre, String icono, String estado) {
+    public MetodoPago crear(String nombre, String icono, String estado, String codigoFactus) {
         Integer tenantId = TenantContext.getCurrentTenantId();
-        MetodoPago metodoPago = new MetodoPago(tenantId, nombre, icono, estado);
+        MetodoPago metodoPago = new MetodoPago(tenantId, nombre, icono, estado, codigoFactus);
         return metodoPagoRepository.guardar(metodoPago);
     }
 
     @Transactional
-    public MetodoPago actualizar(Integer id, JsonNullable<String> icono, String nombre, String estado) {
+    public MetodoPago actualizar(Integer id, JsonNullable<String> icono, String nombre, String estado,
+                                  JsonNullable<String> codigoFactus) {
         MetodoPago metodoPago = buscarPorId(id);
         if (metodoPago.isEsEfectivo() && ESTADO_INACTIVO.equals(estado)) {
             throw new MetodoPagoEfectivoNoDesactivableException();
         }
-        metodoPago.actualizar(icono, nombre, estado);
+        metodoPago.actualizar(icono, nombre, estado, codigoFactus);
         return metodoPagoRepository.guardar(metodoPago);
     }
 

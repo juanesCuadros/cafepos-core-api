@@ -12,4 +12,6 @@ interface MetodoPagoResumenRow {
     Boolean getEsEfectivo();
 
     String getEstado();
+
+    String getCodigoFactus();
 }

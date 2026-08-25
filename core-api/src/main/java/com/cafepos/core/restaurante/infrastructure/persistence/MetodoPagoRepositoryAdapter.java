@@ -31,7 +31,7 @@ class MetodoPagoRepositoryAdapter implements MetodoPagoRepository {
     public List<MetodoPagoResumen> listar() {
         return jpaRepository.listar().stream()
                 .map(row -> new MetodoPagoResumen(row.getId(), row.getNombre(), row.getIcono(),
-                        row.getEsEfectivo(), row.getEstado()))
+                        row.getEsEfectivo(), row.getEstado(), row.getCodigoFactus()))
                 .toList();
     }
 

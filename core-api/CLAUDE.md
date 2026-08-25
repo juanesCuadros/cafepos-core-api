@@ -101,6 +101,42 @@ reglas del proyecto que no deben repetirse en cada prompt.
   `GET /ventas`, ambos con `fecha_inicio`/`fecha_fin` opcionales (ver
   `CajaJornadaJpaRepository.listarEnRango` y `VentaJpaRepository.listar`).
 
+## Cifrado de credenciales Factus (riesgo conocido, no resuelto)
+
+- **`FacturacionDianResolucion` descifra `client_id_factus`/`client_secret_factus`/
+  `username_factus`/`password_factus` de forma EAGER en cualquier carga de la
+  entidad vía JPA** (`@Convert` con `FactusCredencialAttributeConverter`) —
+  esto incluye lecturas que solo necesitan campos NO sensibles, como
+  `prefijo`/`numeracion_actual` durante `POST /ventas` normal
+  (`FacturacionDianService.reservarSiguienteNumeroFactura`). Hibernate
+  descifra los 4 campos convertidos al hidratar la entidad desde el
+  `ResultSet`, sin importar cuáles de sus getters vaya a usar el código
+  que la llamó.
+- **Consecuencia real**: si el texto cifrado se corrompe (ej. una rotación
+  de llave mal ejecutada, o un dato manipulado directamente en la base),
+  `decrypt()` tira `CifradoException` al cargar la fila — y como
+  `reservarSiguienteNumeroFactura()` corre DENTRO de la transacción de
+  `POST /ventas`, esto rompe el cobro COMPLETO (500), no solo el paso que
+  llama a Factus. Confirmado real durante las pruebas de
+  `reintentar-envio` (corromper el ciphertext de `password_factus` hizo
+  fallar `POST /ventas` entero, no solo la transmisión asíncrona a
+  Factus).
+- **Solución correcta, todavía no implementada**: separar el acceso a los
+  campos sensibles de los no sensibles — por ejemplo, `@Basic(fetch =
+  LAZY)` en los 4 campos convertidos (requiere bytecode instrumentation
+  para que Hibernate respete el lazy loading en campos básicos), o una
+  proyección/entidad separada que solo mapee `prefijo`/`numeracion_actual`
+  para el camino de numeración, dejando la lectura de credenciales
+  aislada al único caller real (`credencialesFactus()`).
+- **Cómo reproducir esto a propósito para probar** (sin tocar datos
+  reales): nunca corromper el ciphertext directamente — eso rompe
+  decrypt() por completo y no representa un escenario realista de
+  "credenciales incorrectas". Para simular credenciales Factus inválidas
+  de forma realista, cifrar un valor incorrecto CON LA LLAVE REAL (usando
+  `FactusCredencialesCryptoService.encrypt(...)` desde un test) y guardar
+  ese ciphertext — así decrypt() funciona bien localmente y solo falla la
+  autenticación contra Factus (el escenario async, no el síncrono).
+
 ## DTOs de PATCH (regla obligatoria)
 
 - **Todo campo genuinamente nullable de negocio en un DTO de PATCH debe usar

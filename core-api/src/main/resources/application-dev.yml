@@ -26,6 +26,11 @@ logging:
 cafepos:
   jwt:
     signing-key: dev-only-signing-key-nunca-usar-en-produccion-cambiar-por-variable-de-entorno
+  factus:
+    # Generada con: openssl rand -base64 32 — SOLO para dev local, nunca
+    # usar en produccion (ahi sale de CAFEPOS_FACTUS_ENCRYPTION_KEY como
+    # variable de entorno real, ver application.yml).
+    encryption-key: MvywKIMVe+RWrI7GSnt+1aSf9znpzXRFIPxmeQ+psQU=
 
 # Swagger UI / OpenAPI — habilitado SOLO en dev (ver application.yml, donde
 # queda deshabilitado por defecto). Recordar: mientras no exista

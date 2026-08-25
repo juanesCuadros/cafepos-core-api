@@ -61,7 +61,7 @@ public class ProductoService {
     public Optional<ProductoParaPedido> buscarParaPedido(Integer id) {
         return productoRepository.buscarPorId(id).map(p -> new ProductoParaPedido(
                 p.getId(), p.getNombre(), p.getPrecioVenta(), p.getEstado(), p.getAreaCocinaId(),
-                p.getTasaImpuesto()));
+                p.getTasaImpuesto(), p.getCodigo()));
     }
 
     @Transactional

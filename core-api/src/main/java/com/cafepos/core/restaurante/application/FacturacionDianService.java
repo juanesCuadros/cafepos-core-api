@@ -1,5 +1,6 @@
 package com.cafepos.core.restaurante.application;
 
+import com.cafepos.core.restaurante.domain.CredencialesFactus;
 import com.cafepos.core.restaurante.domain.FacturacionDianEstado;
 import com.cafepos.core.restaurante.domain.FacturacionDianRepository;
 import com.cafepos.core.restaurante.domain.FacturacionDianResolucion;
@@ -12,13 +13,19 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 /**
- * Solo lectura para su propio modulo (ver contrato 10.4, sin crear/actualizar
- * de prefijo/rango/etc).
+ * Solo lectura para su propio modulo/API publica (contrato 10.4, GET
+ * /restaurante/facturacion-dian sigue sin POST/PATCH propio) salvo dos
+ * casos: reservarSiguienteNumeroFactura() (contador de runtime) y
+ * credencialesFactusPara() (lectura descifrada exclusiva para el cliente
+ * real de Factus, ver su Javadoc). La escritura de credenciales ya no vive
+ * aca — la hace admin-api directo contra la misma tabla (Super Admin,
+ * POST /admin/negocios/{tenant_id}/facturacion-dian), core-api solo lee.
  *
- * @NamedInterface: expuesto puntualmente para que com.cafepos.core.caja
- * reserve el siguiente numero de factura al cobrar con cliente identificado
- * (ver reservarSiguienteNumeroFactura) — solo cruza NumeroFacturaReservado
- * (tambien anotado), nunca la entidad FacturacionDianResolucion completa.
+ * @NamedInterface: expuesto puntualmente para que otros modulos lo llamen
+ * (com.cafepos.core.caja, para reservar numero de factura y para leer
+ * credenciales Factus al transmitir) — solo cruzan tipos primitivos,
+ * NumeroFacturaReservado y CredencialesFactus (tambien anotados), nunca la
+ * entidad FacturacionDianResolucion completa.
  */
 @org.springframework.modulith.NamedInterface("facturacionDianService")
 @Service
@@ -75,5 +82,24 @@ public class FacturacionDianService {
             prefijo = PREFIJO_DEFAULT;
         }
         return Optional.of(new NumeroFacturaReservado(r.getId(), prefijo, r.getNumeracionActual().intValue()));
+    }
+
+    /**
+     * API publica de este modulo EXCLUSIVA para el cliente real de Factus
+     * (com.cafepos.core.caja.infrastructure.factus) — ningun otro caller
+     * deberia necesitar credenciales descifradas. Optional.empty() si el
+     * tenant no tiene resolucion vigente, o si la tiene pero sin las 4
+     * credenciales Factus completas (resolucion dada de alta manualmente en
+     * base sin configurar Factus todavia, ver Javadoc de FacturacionDianResolucion).
+     * Sin parametro tenantId a proposito — RLS + TenantContext ya escopan
+     * buscarVigente() al tenant actual, mismo criterio que el resto de
+     * metodos de este service.
+     */
+    @Transactional(readOnly = true)
+    public Optional<CredencialesFactus> credencialesFactusPara() {
+        return facturacionDianRepository.buscarVigente()
+                .map(FacturacionDianResolucion::credencialesFactus)
+                .filter(c -> c.clientId() != null && c.clientSecret() != null && c.username() != null
+                        && c.password() != null);
     }
 }

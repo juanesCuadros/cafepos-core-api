@@ -69,7 +69,7 @@ public class ComboService {
                             g.productos().stream().map(ProductoRef::id).toList()))
                     .toList();
             return new ComboParaPedido(combo.getId(), combo.getNombre(), combo.getPrecio(), combo.getEstado(),
-                    grupos);
+                    grupos, combo.getCodigo());
         });
     }
 

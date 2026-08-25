@@ -62,7 +62,8 @@ public class FacturacionController {
     @GetMapping("/{id}")
     @PreAuthorize("hasPermission('caja.facturacion', 'ver')")
     @Operation(summary = "Detalle completo de una factura DIAN",
-            description = "cufe y qr_code siempre null en esta version — sin transmision real a Factus.")
+            description = "cufe y qr_code quedan null hasta que la transmision real a Factus (automatica tras "
+                    + "cobrar, o via reintentar-envio) haya tenido exito.")
     public FacturaDetalleResponse obtener(@PathVariable Integer id) {
         return FacturaDetalleResponse.de(facturacionService.detalle(id));
     }
@@ -77,9 +78,10 @@ public class FacturacionController {
 
     @PostMapping("/{id}/reintentar-envio")
     @PreAuthorize("hasPermission('caja.facturacion', 'reintentar_envio')")
-    @Operation(summary = "Reintenta la transmision de una factura a la DIAN (stub)",
-            description = "Solo aplica si estado_dian es 'pendiente' o 'rechazada'. Sin transmision real a Factus, "
-                    + "estado_dian queda igual.")
+    @Operation(summary = "Reintenta la transmision real de una factura a la DIAN via Factus",
+            description = "Solo aplica si estado_dian es 'pendiente' o 'rechazada'. Corre sincronicamente y espera "
+                    + "la respuesta real de Factus — si Factus falla (credenciales, timeout, red, rechazo), "
+                    + "estado_dian queda igual y el mensaje de la respuesta lo refleja (nunca 500).")
     @ApiResponses({
             @ApiResponse(responseCode = "400", description = "estado_dian no es 'pendiente' ni 'rechazada'")
     })

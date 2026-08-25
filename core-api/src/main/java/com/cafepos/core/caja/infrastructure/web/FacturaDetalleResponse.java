@@ -6,7 +6,7 @@ import com.cafepos.core.shared.jackson.Monto;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
-/** cufe/qr_code SIEMPRE null en este prompt — sin transmision real a Factus (ver FacturaDian). */
+/** cufe/qr_code null hasta que la transmision real a Factus tenga exito (ver FacturaDian). */
 public record FacturaDetalleResponse(Integer id, String numeroFactura, OffsetDateTime fechaEmision, String cufe,
                                       String qrCode, String estadoDian, String motivoRechazo,
                                       @Monto BigDecimal total, ClienteFacturaResponse cliente) {

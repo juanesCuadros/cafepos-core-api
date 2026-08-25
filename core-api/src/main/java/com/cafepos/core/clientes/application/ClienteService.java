@@ -6,6 +6,7 @@ import com.cafepos.core.clientes.domain.ClienteConVentasException;
 import com.cafepos.core.clientes.domain.ClienteNoEncontradoException;
 import com.cafepos.core.clientes.domain.ClienteNoEliminableException;
 import com.cafepos.core.clientes.domain.ClienteParaFactura;
+import com.cafepos.core.clientes.domain.ClienteParaFacturaDian;
 import com.cafepos.core.clientes.domain.ClienteRef;
 import com.cafepos.core.clientes.domain.ClienteRepository;
 import com.cafepos.core.clientes.domain.ClienteResumen;
@@ -67,6 +68,20 @@ public class ClienteService {
         return clienteRepository.buscarPorId(id)
                 .map(c -> new ClienteParaFactura(c.getId(), c.getNombre(), c.getNumeroDocumentoEnmascarado(),
                         c.getCorreo()));
+    }
+
+    /**
+     * API publica de este modulo EXCLUSIVA para transmitir una factura DIAN
+     * real a Factus (com.cafepos.core.caja.application.FacturaDianTransmisionService)
+     * — numero_documento SIN mascara, Factus lo exige tal cual (ver
+     * ClienteParaFacturaDian). Ningun otro caller deberia necesitar el
+     * documento sin enmascarar.
+     */
+    @Transactional(readOnly = true)
+    public Optional<ClienteParaFacturaDian> buscarParaFacturaDian(Integer id) {
+        return clienteRepository.buscarPorId(id)
+                .map(c -> new ClienteParaFacturaDian(c.getId(), c.getTipoDocumento(), c.getNumeroDocumento(),
+                        c.getNombre(), c.getCorreo()));
     }
 
     /**

@@ -5,6 +5,7 @@ import com.cafepos.admin.auth.domain.CredencialesInvalidasException;
 import com.cafepos.admin.auth.domain.RefreshTokenInvalidoException;
 import com.cafepos.admin.negocios.domain.PlanNoExisteException;
 import com.cafepos.admin.negocios.domain.SlugYaExisteException;
+import com.cafepos.admin.negocios.domain.TenantNoEncontradoException;
 import com.cafepos.admin.planes.domain.PlanNoEncontradoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +47,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PlanNoEncontradoException.class)
     public ResponseEntity<ErrorResponse> handlePlanNoEncontrado(PlanNoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(TenantNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handleTenantNoEncontrado(TenantNoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
     }
 
