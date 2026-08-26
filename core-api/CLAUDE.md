@@ -271,6 +271,35 @@ reglas del proyecto que no deben repetirse en cada prompt.
   (`@PreAuthorize("hasPermission('modulo.subvista', 'accion')")`), con caché
   Caffeine por `(tenant_id, rol_id)`.
 
+## Manejo de `AccessDeniedException` (regla crítica, no negociable)
+
+- **`GlobalExceptionHandler.handleAccessDenied` DEBE resolver el 403
+  directo (devolver un `ResponseEntity`), NUNCA relanzar la excepción.**
+  Bug real ya confirmado y arreglado: relanzarla asumiendo que
+  `ExceptionTranslationFilter` la traduce a 403 dentro del mismo
+  dispatch es una suposición falsa en este proyecto — cuando la
+  excepción se origina en un `@PreAuthorize` de un método de
+  controller, escapa sin resolver, Spring Boot la reenvía a `/error`
+  (dispatch tipo ERROR), y en ese dispatch los filtros de seguridad NO
+  vuelven a correr → `SecurityContext` vacío → `ExceptionTranslationFilter`
+  lo clasifica como "necesita autenticación" y devuelve 401 "Sesión
+  inválida o expirada" en vez de un 403 real. Afecta a CUALQUIER
+  `@PreAuthorize` denegado de cualquier módulo, no depende del catálogo
+  de permisos de ese módulo puntual — descubierto probando RBAC real
+  del módulo Gastos, pero preexistía en todo el proyecto.
+- **Relación con el catch-all `Exception.class` de la misma clase
+  (fix anterior, ver su Javadoc): son el MISMO mecanismo, síntomas
+  inversos.** El catch-all ya resuelve cualquier excepción no manejada
+  ADENTRO del ciclo normal de `DispatcherServlet` para evitar el reenvío
+  a `/error` (que ahí convertía un 500 real en un 403 vacío sin
+  relación con permisos). Este fix aplica el mismo principio a
+  `AccessDeniedException` específicamente. **Si se toca cualquiera de
+  los dos handlers en el futuro, verificar AMBOS síntomas con una
+  prueba real**: una excepción de negación de permiso real da 403 (no
+  401), Y una excepción genérica no relacionada con seguridad sigue
+  dando 500 real (no 403 ni 401) — confirmado con un
+  `RuntimeException` de prueba forzado a propósito, no asumido.
+
 ## PIN de step-up (regla obligatoria para acciones con `requiere_pin=true`)
 
 - Cualquier endpoint que mute datos marcados con `requiere_pin=true` en
