@@ -29,6 +29,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
+          command_timeout: 20m
           script: |
             set -e
             cd ~/resttodash/backend
@@ -36,5 +37,5 @@ jobs:
             git checkout main
             git pull
             cd ~/resttodash
-            docker compose build --no-cache core-api admin-api
+            docker compose build core-api admin-api
             docker compose up -d core-api admin-api
