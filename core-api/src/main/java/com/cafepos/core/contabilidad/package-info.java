@@ -1,17 +1,30 @@
 /**
- * Balance general, flujo de caja y transacciones — Módulo 13
+ * Contabilidad — Balance general, Flujo de caja, Transacciones (Modulo 13)
  *
- * Módulo de aplicación (Spring Modulith). Arquitectura hexagonal:
- *   - domain: entidades, agregados y puertos (interfaces) de este módulo.
- *   - application: casos de uso; orquesta la transacción y publica eventos.
- *   - infrastructure.web: controllers (adaptador de entrada HTTP).
- *   - infrastructure.persistence: implementación JPA de los puertos del dominio.
+ * Modulo de solo lectura, exclusivo del rol Jefe (ver catalogo permiso:
+ * contabilidad.balance_general / contabilidad.flujo_caja /
+ * contabilidad.transacciones, accion "ver"). No tiene entidades propias
+ * ni tablas propias — agrega datos de venta/venta_pago/metodo_pago
+ * (Caja), compra/proveedor (Compras), gasto/categoria_gasto (Gastos) y
+ * caja_movimiento/caja_jornada (Caja), todos leidos por SQL nativo
+ * directo contra las tablas fisicas (Modulith no restringe el acceso a
+ * tablas via SQL nativo, solo el acceso a clases Java de otro modulo —
+ * mismo patron ya usado en personal.PropinaJpaRepository e
+ * inventario.VencimientoJpaRepository).
  *
- * Comunicación con otros módulos: solo a través de las clases públicas
- * expuestas directamente en este paquete (la "API" del módulo) o vía
- * eventos de aplicación (org.springframework.context.ApplicationEvent)
- * cuando se tolera consistencia eventual. Nunca acceder directamente a
- * domain/application/infrastructure de otro módulo — el test
+ * Arquitectura hexagonal:
+ *   - domain: puertos y records de este modulo (no hay entidades JPA
+ *     propias — ver ContabilidadJpaRepository, parametrizado sobre
+ *     shared.seguridad.Usuario solo porque TenantAwareRepository exige
+ *     un tipo de entidad, mismo patron que los ejemplos de arriba).
+ *   - application: casos de uso (calculo de balance/flujo/transacciones,
+ *     resolucion de rango de fechas segun "vista").
+ *   - infrastructure.web: controllers.
+ *   - infrastructure.persistence: adapter con las queries nativas.
+ *
+ * Comunicación con otros módulos: ninguna via Java — solo SQL nativo
+ * contra tablas de otros modulos. Nunca acceder directamente a
+ * domain/application/infrastructure de otro modulo — el test
  * ModularityTests falla el build si esto ocurre.
  */
 package com.cafepos.core.contabilidad;

@@ -18,9 +18,8 @@ import java.util.Optional;
 
 /**
  * Calculo de propinas atribuidas a un empleado — SOLO uso interno de este
- * modulo (EmpleadoService.detalle y EmpleadoService.propinas), nunca
- * expuesto a otros modulos, por eso sin @NamedInterface ni modificador
- * public en la clase.
+ * modulo (EmpleadoService.detalle y EmpleadoService.propinas), y ahora
+ * expuesto a reportes via @NamedInterface.
  *
  * Solo cuenta venta con estado='cobrado' (una anulada nunca genero
  * propina real). Si el empleado no tiene usuario asociado, no hay
@@ -32,8 +31,11 @@ import java.util.Optional;
  * saber cuanto le corresponde al mesero), 'restaurante' (o cualquier
  * otro valor inesperado) -> 0%.
  */
+import org.springframework.modulith.NamedInterface;
+
+@NamedInterface
 @Service
-class PropinaCalculoService {
+public class PropinaCalculoService {
 
     private static final BigDecimal CIEN = new BigDecimal("100");
     private static final String DESTINO_MESERO = "mesero";
@@ -48,7 +50,7 @@ class PropinaCalculoService {
     }
 
     @Transactional(readOnly = true)
-    ResumenPropinas calcular(Integer empleadoId, LocalDate fechaInicio, LocalDate fechaFin) {
+    public ResumenPropinas calcular(Integer empleadoId, LocalDate fechaInicio, LocalDate fechaFin) {
         Optional<UsuarioAsociado> usuario = empleadoRepository.buscarUsuarioAsociado(empleadoId);
         if (usuario.isEmpty()) {
             return new ResumenPropinas(BigDecimal.ZERO, List.of());
