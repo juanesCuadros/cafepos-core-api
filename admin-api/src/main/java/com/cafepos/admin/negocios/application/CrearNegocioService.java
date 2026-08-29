@@ -133,8 +133,7 @@ public class CrearNegocioService {
                 new Tenant(superadminId, planId, slug, estadoInicial, fechaProximaFacturacion));
         Integer tenantId = tenant.getId();
 
-        // b. restaurantes
-        restauranteRepository.save(new Restaurante(tenantId, nombreNegocio));
+        // b. restaurantes (Eliminado: ahora se provisiona automáticamente por un trigger en DB tras crear el tenant)
 
         List<Rol> roles = rolRepository.findAll();
         Map<String, Integer> rolIdPorNombre = roles.stream()
@@ -155,12 +154,9 @@ public class CrearNegocioService {
         // e. tenant_permiso_config — solo los permisos que exigen PIN
         construirTenantPermisoConfigs(tenantId, permisoIdPorClave).forEach(tenantPermisoConfigRepository::save);
 
-        // f. tenant_rol_config — una fila por cada uno de los 5 roles
-        roles.forEach(rol -> tenantRolConfigRepository.save(
-                new TenantRolConfig(tenantId, rol.getId(), MINUTOS_INACTIVIDAD_DEFAULT)));
-
-        // g. configuracion_sistema
-        configuracionSistemaRepository.save(new ConfiguracionSistema(tenantId));
+        // f. tenant_rol_config (Eliminado: se provisiona por trigger de base de datos)
+        
+        // g. configuracion_sistema (Eliminado: se provisiona por trigger de base de datos)
 
         // h. metodo_pago
         metodoPagoRepository.save(new MetodoPago(tenantId, "Efectivo", true, "activo"));
