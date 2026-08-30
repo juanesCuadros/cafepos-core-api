@@ -38,8 +38,8 @@ interface VencimientoJpaRepository extends TenantAwareRepository<LoteInsumo, Int
             + "     OR dias_restantes <= (SELECT COALESCE(dias_anticipacion_vencim, 7) FROM configuracion_sistema LIMIT 1)"
             + ") "
             + "SELECT * FROM calculado "
-            + "WHERE (:categoriaInsumoId IS NULL OR categoria_insumo_id = :categoriaInsumoId) "
-            + "AND (:estado IS NULL OR estado_calc = :estado) "
+            + "WHERE (CAST(:categoriaInsumoId AS int) IS NULL OR categoria_insumo_id = CAST(:categoriaInsumoId AS int)) "
+            + "AND (CAST(:estado AS varchar) IS NULL OR estado_calc = CAST(:estado AS varchar)) "
             + "ORDER BY fecha_vencimiento ASC", nativeQuery = true)
     List<LoteVencimientoRow> listar(@Param("estado") String estado,
                                      @Param("categoriaInsumoId") Integer categoriaInsumoId);
