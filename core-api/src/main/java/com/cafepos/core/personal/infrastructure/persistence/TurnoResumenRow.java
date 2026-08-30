@@ -9,6 +9,8 @@ interface TurnoResumenRow {
 
     Integer getId();
 
+    Integer getEmpleadoId();
+
     String getEmpleadoNombre();
 
     LocalDate getFecha();
@@ -18,4 +20,6 @@ interface TurnoResumenRow {
     Instant getHoraFin();
 
     BigDecimal getHorasTrabajadas();
+
+    String getObservaciones();
 }

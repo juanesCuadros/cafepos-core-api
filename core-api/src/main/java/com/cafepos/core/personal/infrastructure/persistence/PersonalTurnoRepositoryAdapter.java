@@ -33,10 +33,10 @@ class PersonalTurnoRepositoryAdapter implements TurnoRepository {
     @Override
     public List<TurnoResumen> listar(LocalDate fechaInicio, LocalDate fechaFin, Integer empleadoId) {
         return jpaRepository.listar(fechaInicio, fechaFin, empleadoId).stream()
-                .map(row -> new TurnoResumen(row.getId(), row.getEmpleadoNombre(), row.getFecha(),
+                .map(row -> new TurnoResumen(row.getId(), row.getEmpleadoId(), row.getEmpleadoNombre(), row.getFecha(),
                         row.getHoraInicio() != null ? row.getHoraInicio().atOffset(ZoneOffset.UTC) : null,
                         row.getHoraFin() != null ? row.getHoraFin().atOffset(ZoneOffset.UTC) : null,
-                        row.getHorasTrabajadas()))
+                        row.getHorasTrabajadas(), row.getObservaciones()))
                 .toList();
     }
 
