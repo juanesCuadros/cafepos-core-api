@@ -16,6 +16,10 @@ interface CompraListadoRow {
 
     String getProveedorNombre();
 
+    Integer getUsuarioId();
+
+    String getUsuarioNombre();
+
     String getFormaPago();
 
     String getEstado();

@@ -12,8 +12,9 @@ import java.util.List;
 interface CompraJpaRepository extends TenantAwareRepository<Compra, Integer> {
 
     @Query(value = "SELECT c.id AS id, c.codigo AS codigo, c.fecha AS fecha, c.proveedor_id AS proveedor_id, "
-            + "p.nombre AS proveedor_nombre, c.forma_pago AS forma_pago, c.estado AS estado, c.total AS total "
-            + "FROM compra c JOIN proveedor p ON p.id = c.proveedor_id "
+            + "p.nombre AS proveedor_nombre, c.usuario_id AS usuario_id, u.nombre AS usuario_nombre, "
+            + "c.forma_pago AS forma_pago, c.estado AS estado, c.total AS total "
+            + "FROM compra c JOIN proveedor p ON p.id = c.proveedor_id JOIN usuario u ON u.id = c.usuario_id "
             + "WHERE (CAST(:fechaInicio AS date) IS NULL OR c.fecha >= CAST(:fechaInicio AS date)) "
             + "AND (CAST(:fechaFin AS date) IS NULL OR c.fecha <= CAST(:fechaFin AS date)) "
             + "AND (CAST(:proveedorId AS int) IS NULL OR c.proveedor_id = CAST(:proveedorId AS int)) "

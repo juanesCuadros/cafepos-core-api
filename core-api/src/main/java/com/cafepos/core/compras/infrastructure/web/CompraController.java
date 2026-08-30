@@ -77,10 +77,10 @@ public class CompraController {
     @GetMapping
     @PreAuthorize("hasPermission('compras.historial_compras', 'ver')")
     @Operation(summary = "Historial de compras, con filtros opcionales")
-    public ComprasResponse listar(@RequestParam(required = false) LocalDate fechaInicio,
-                                   @RequestParam(required = false) LocalDate fechaFin,
-                                   @RequestParam(required = false) Integer proveedorId,
-                                   @RequestParam(required = false) String formaPago,
+    public ComprasResponse listar(@RequestParam(name = "fecha_inicio", required = false) LocalDate fechaInicio,
+                                   @RequestParam(name = "fecha_fin", required = false) LocalDate fechaFin,
+                                   @RequestParam(name = "proveedor_id", required = false) Integer proveedorId,
+                                   @RequestParam(name = "forma_pago", required = false) String formaPago,
                                    @RequestParam(required = false) String estado) {
         return ComprasResponse.de(compraService.listar(fechaInicio, fechaFin, proveedorId, formaPago, estado));
     }
@@ -105,13 +105,13 @@ public class CompraController {
             @ApiResponse(responseCode = "403", description = "Falta el header X-Pin-Token / pin_token invalido, o "
                     + "la compra es de credito y ya esta pagada")
     })
-    public AnularCompraResponse anular(@PathVariable Integer id,
+    public AnularCompraResponse anular(@PathVariable Integer id, @Valid @RequestBody AnularCompraRequest request,
                                         @Parameter(description = "pin_token emitido por POST /auth/pin/verificar")
                                         @RequestHeader(name = "X-Pin-Token", required = false) String pinToken,
                                         Authentication authentication) {
         pinStepUpService.validar(pinToken, MODULO_HISTORIAL, ACCION_ANULAR, RECURSO_TIPO_COMPRA, id);
         AuthenticatedUsuario principal = (AuthenticatedUsuario) authentication.getPrincipal();
-        return AnularCompraResponse.de(compraService.anular(id, principal.usuarioId()));
+        return AnularCompraResponse.de(compraService.anular(id, principal.usuarioId(), request.motivo()));
     }
 
     @PostMapping("/{id}/marcar-pagada")

@@ -33,7 +33,8 @@ class CompraRepositoryAdapter implements CompraRepository {
                                            String formaPago, String estado) {
         return jpaRepository.listar(fechaInicio, fechaFin, proveedorId, formaPago, estado).stream()
                 .map(row -> new CompraListadoItem(row.getId(), row.getCodigo(), row.getFecha(), row.getProveedorId(),
-                        row.getProveedorNombre(), row.getFormaPago(), row.getEstado(), row.getTotal()))
+                        row.getProveedorNombre(), row.getUsuarioId(), row.getUsuarioNombre(), row.getFormaPago(),
+                        row.getEstado(), row.getTotal()))
                 .toList();
     }
 }

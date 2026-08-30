@@ -21,6 +21,8 @@ import com.cafepos.core.inventario.domain.ReversionInsumoResultado;
 import com.cafepos.core.shared.auditoria.Auditable;
 import com.cafepos.core.shared.auditoria.AuditoriaContext;
 import com.cafepos.core.shared.codigo.GeneradorCodigo;
+import com.cafepos.core.shared.seguridad.Usuario;
+import com.cafepos.core.shared.seguridad.UsuarioRepository;
 import com.cafepos.core.shared.tenant.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,17 +53,19 @@ public class CompraService {
     private final CompraRepository compraRepository;
     private final CompraDetalleRepository compraDetalleRepository;
     private final ProveedorRepository proveedorRepository;
+    private final UsuarioRepository usuarioRepository;
     private final InsumoService insumoService;
     private final LoteInsumoService loteInsumoService;
     private final MovimientoInventarioService movimientoInventarioService;
 
     public CompraService(CompraRepository compraRepository, CompraDetalleRepository compraDetalleRepository,
-                          ProveedorRepository proveedorRepository, InsumoService insumoService,
-                          LoteInsumoService loteInsumoService,
+                          ProveedorRepository proveedorRepository, UsuarioRepository usuarioRepository,
+                          InsumoService insumoService, LoteInsumoService loteInsumoService,
                           MovimientoInventarioService movimientoInventarioService) {
         this.compraRepository = compraRepository;
         this.compraDetalleRepository = compraDetalleRepository;
         this.proveedorRepository = proveedorRepository;
+        this.usuarioRepository = usuarioRepository;
         this.insumoService = insumoService;
         this.loteInsumoService = loteInsumoService;
         this.movimientoInventarioService = movimientoInventarioService;
@@ -78,8 +82,10 @@ public class CompraService {
         Compra compra = buscarPorId(id);
         String proveedorNombre = proveedorRepository.buscarPorId(compra.getProveedorId())
                 .map(Proveedor::getNombre).orElse(null);
+        String usuarioNombre = usuarioRepository.findById(compra.getUsuarioId())
+                .map(Usuario::getNombre).orElse(null);
         List<CompraDetalleItemVista> items = compraDetalleRepository.listarVistaPorCompraId(id);
-        return new CompraVista(compra, proveedorNombre, items);
+        return new CompraVista(compra, proveedorNombre, usuarioNombre, items);
     }
 
     /**
@@ -138,7 +144,7 @@ public class CompraService {
      */
     @Transactional
     @Auditable(entidadTipo = "compra", accion = "anular", entidadIdExpression = "#id")
-    public AnularCompraResultado anular(Integer id, Integer usuarioId) {
+    public AnularCompraResultado anular(Integer id, Integer usuarioId, String motivo) {
         Compra compra = buscarPorId(id);
         AuditoriaContext.registrarAntes(compra);
         if (compra.bloqueadaParaAnular()) {
@@ -161,7 +167,7 @@ public class CompraService {
             movimientosGenerados++;
         }
 
-        compra.anular();
+        compra.anular(motivo);
         compra = compraRepository.guardar(compra);
 
         return new AnularCompraResultado(compra.getId(), compra.getEstado(), movimientosGenerados);

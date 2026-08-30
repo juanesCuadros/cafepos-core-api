@@ -5,6 +5,6 @@ import com.cafepos.core.compras.domain.CompraDetalleItemVista;
 
 import java.util.List;
 
-/** GET /compras/{id} — proveedorNombre aplanado, mismo criterio que CompraListadoItem. */
-public record CompraVista(Compra compra, String proveedorNombre, List<CompraDetalleItemVista> items) {
+/** GET /compras/{id} — proveedorNombre/usuarioNombre aplanados, mismo criterio que CompraListadoItem. */
+public record CompraVista(Compra compra, String proveedorNombre, String usuarioNombre, List<CompraDetalleItemVista> items) {
 }

@@ -59,6 +59,9 @@ public class Compra {
     @Column
     private String observaciones;
 
+    @Column(name = "motivo_anulacion")
+    private String motivoAnulacion;
+
     @Column(nullable = false)
     private BigDecimal total;
 
@@ -101,8 +104,9 @@ public class Compra {
         return FORMA_PAGO_CREDITO.equals(formaPago) && ESTADO_PAGADA.equals(estado);
     }
 
-    public void anular() {
+    public void anular(String motivo) {
         this.estado = ESTADO_ANULADA;
+        this.motivoAnulacion = motivo;
         this.updatedAt = OffsetDateTime.now();
     }
 

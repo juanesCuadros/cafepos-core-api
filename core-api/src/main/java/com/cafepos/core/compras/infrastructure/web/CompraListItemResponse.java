@@ -7,11 +7,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record CompraListItemResponse(Integer id, String codigo, LocalDate fecha, Integer proveedorId,
-                                      String proveedorNombre, String formaPago, String estado,
-                                      @Monto BigDecimal total) {
+                                      String proveedorNombre, Integer usuarioId, String usuarioNombre,
+                                      String formaPago, String estado, @Monto BigDecimal total) {
 
     public static CompraListItemResponse de(CompraListadoItem item) {
         return new CompraListItemResponse(item.id(), item.codigo(), item.fecha(), item.proveedorId(),
-                item.proveedorNombre(), item.formaPago(), item.estado(), item.total());
+                item.proveedorNombre(), item.usuarioId(), item.usuarioNombre(), item.formaPago(), item.estado(),
+                item.total());
     }
 }
