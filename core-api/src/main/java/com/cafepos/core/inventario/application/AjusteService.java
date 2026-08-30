@@ -7,6 +7,8 @@ import com.cafepos.core.inventario.domain.InsumoRepository;
 import com.cafepos.core.inventario.domain.MovimientoInventario;
 import com.cafepos.core.inventario.domain.MovimientoInventarioRepository;
 import com.cafepos.core.inventario.domain.StockInsuficienteException;
+import com.cafepos.core.shared.auditoria.Auditable;
+import com.cafepos.core.shared.auditoria.AuditoriaContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,9 +36,11 @@ public class AjusteService {
     }
 
     @Transactional
+    @Auditable(entidadTipo = "insumo", accion = "ajustar", entidadIdExpression = "#insumoId")
     public AjusteResultado ajustar(Integer insumoId, String tipo, BigDecimal cantidad, String motivo,
                                     Integer usuarioAutorizaId) {
         Insumo insumo = insumoRepository.buscarPorId(insumoId).orElseThrow(InsumoNoEncontradoException::new);
+        AuditoriaContext.registrarAntes(insumo);
 
         BigDecimal stockAnterior = insumo.getStockActual();
         BigDecimal delta = TIPO_ENTRADA.equals(tipo) ? cantidad : cantidad.negate();

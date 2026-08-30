@@ -7,7 +7,7 @@ import com.cafepos.core.clientes.domain.ClienteRepository;
 import com.cafepos.core.clientes.domain.ClienteResumen;
 import com.cafepos.core.clientes.domain.ClienteSaldoMovimiento;
 import com.cafepos.core.clientes.domain.CompraHistorial;
-import com.cafepos.core.clientes.domain.MascaraDocumento;
+import com.cafepos.core.shared.texto.MascaraDocumento;
 import com.cafepos.core.clientes.domain.SaldoMovimientoItem;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;

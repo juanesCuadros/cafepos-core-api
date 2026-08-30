@@ -1,5 +1,6 @@
 package com.cafepos.core.shared.seguridad;
 
+import com.cafepos.core.shared.auditoria.AuditoriaContext;
 import com.cafepos.core.shared.tenant.TenantContext;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -62,5 +63,10 @@ public class PinStepUpService {
                 || !recursoId.equals(jwtService.recursoId(claims))) {
             throw new PinRequeridoException();
         }
+
+        // Mismo "sub" del pin_token ya parseado arriba — quien autorizo con su PIN,
+        // no necesariamente el usuario autenticado actual (ver PinVerificarService).
+        // AuditoriaAspect lo lee si el metodo que termina llamando esta @Auditable.
+        AuditoriaContext.registrarAutorizacion(jwtService.usuarioId(claims));
     }
 }

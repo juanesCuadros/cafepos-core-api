@@ -118,15 +118,30 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * NO se maneja aca a proposito — se relanza sin tocar para que Spring
-     * Security (ExceptionTranslationFilter + AccessDeniedHandler) siga
-     * siendo el unico que traduce una negacion real de permiso a 403. Sin
-     * este metodo, el catch-all de Exception de mas abajo (mas generico)
-     * la interceptaria primero y convertiria un 403 real en 500.
+     * Devuelve 403 DIRECTO aca, ya NO relanza la excepcion — confirmado
+     * real (ver reporte de implementacion del modulo Gastos, RBAC test de
+     * Cajero/Admin) que relanzarla NO llega a ser resuelta por Spring
+     * Security's ExceptionTranslationFilter dentro del MISMO dispatch: un
+     * AccessDeniedException lanzado por @PreAuthorize desde DENTRO del
+     * metodo del controller escapa de ExceptionHandlerExceptionResolver
+     * (este handler la relanzaba, ningun resolver la marcaba "resuelta"),
+     * Spring Boot la reenvia internamente a "/error" via un dispatch de
+     * tipo ERROR, y en ESE dispatch los filtros de Spring Security (que
+     * fijaron el Authentication real en el dispatch original) no vuelven a
+     * correr — termina viendo un SecurityContext vacio/anonimo,
+     * ExceptionTranslationFilter lo clasifica como "necesita
+     * autenticacion" y devuelve el 401 "NO_AUTENTICADO" en vez de un 403
+     * real. Bug pre-existente de TODO el proyecto (afecta cualquier
+     * @PreAuthorize denegado, no solo Gastos), no algo que dependa del
+     * catalogo de permisos de un modulo puntual. Resolver la excepcion
+     * ACA, dentro del ciclo normal de DispatcherServlet, evita el reenvio
+     * a /error por completo — mismo principio que el catch-all de mas
+     * abajo, ya documentado para el caso generico.
      */
     @ExceptionHandler(AccessDeniedException.class)
-    public void handleAccessDenied(AccessDeniedException ex) throws AccessDeniedException {
-        throw ex;
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        String mensaje = ex.getMessage() != null ? ex.getMessage() : "No tienes permiso para realizar esta accion";
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(mensaje));
     }
 
     /**

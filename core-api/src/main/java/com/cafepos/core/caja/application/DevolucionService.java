@@ -19,6 +19,7 @@ import com.cafepos.core.clientes.application.ClienteService;
 import com.cafepos.core.clientes.domain.ClienteRef;
 import com.cafepos.core.operacion.application.PedidoService;
 import com.cafepos.core.operacion.domain.PedidoItemParaVenta;
+import com.cafepos.core.shared.auditoria.Auditable;
 import com.cafepos.core.shared.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -107,7 +108,9 @@ public class DevolucionService {
      * sin reversion real a ninguna pasarela de pago (limitacion de esta
      * version, queda solo registrado).
      */
+    /** entidad_id via "#result.devolucion.id" — la devolucion se crea adentro, su id no es un parametro de este metodo. */
     @Transactional
+    @Auditable(entidadTipo = "devolucion", accion = "autorizar", entidadIdExpression = "#result.devolucion.id")
     public DevolucionResultado solicitar(Integer ventaId, List<ItemDevolucionInput> items, String motivo,
                                           Integer usuarioAutorizaId) {
         Venta venta = buscarVenta(ventaId);

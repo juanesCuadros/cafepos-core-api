@@ -13,6 +13,8 @@ import com.cafepos.core.caja.domain.VentaNoEncontradaException;
 import com.cafepos.core.caja.domain.VentaRepository;
 import com.cafepos.core.clientes.application.ClienteService;
 import com.cafepos.core.clientes.domain.ClienteParaFactura;
+import com.cafepos.core.shared.auditoria.Auditable;
+import com.cafepos.core.shared.auditoria.AuditoriaContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -136,8 +138,10 @@ public class FacturacionService {
      * devolucion (ver DevolucionService.solicitar).
      */
     @Transactional
+    @Auditable(entidadTipo = "factura_dian", accion = "anular", entidadIdExpression = "#id")
     public AnularFacturaResultado anular(Integer id, String motivo) {
         FacturaDian factura = buscarFactura(id);
+        AuditoriaContext.registrarAntes(factura);
         Venta venta = buscarVenta(factura.getVentaId());
         NotaCredito notaCredito = new NotaCredito(factura.getTenantId(), factura.getId(), motivo, venta.getTotal());
         notaCredito = notaCreditoRepository.guardar(notaCredito);

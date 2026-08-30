@@ -10,6 +10,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.openapitools.jackson.nullable.JsonNullable;
+import com.cafepos.core.shared.texto.MascaraDocumento;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;

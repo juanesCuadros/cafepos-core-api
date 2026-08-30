@@ -15,6 +15,8 @@ import com.cafepos.core.operacion.application.PedidoService;
 import com.cafepos.core.operacion.domain.PedidoItemParaVenta;
 import com.cafepos.core.restaurante.application.MetodoPagoService;
 import com.cafepos.core.restaurante.domain.MetodoPagoResumen;
+import com.cafepos.core.shared.auditoria.Auditable;
+import com.cafepos.core.shared.auditoria.AuditoriaContext;
 import com.cafepos.core.shared.seguridad.Usuario;
 import com.cafepos.core.shared.seguridad.UsuarioRepository;
 import org.springframework.stereotype.Service;
@@ -107,10 +109,16 @@ public class HistorialVentasService {
      * PinStepUpService). nota_credito SOLO si la venta tiene factura_dian
      * asociada, sin importar su estado_dian (nunca llega a "aceptada" en
      * esta version sin Factus real).
+     *
+     * Primer y unico caso instrumentado con @Auditable por ahora (prueba de
+     * concepto, ver shared.auditoria) — registrarAntes(venta) tiene que
+     * llamarse ANTES de venta.anular() para capturar el estado real previo.
      */
     @Transactional
+    @Auditable(entidadTipo = "venta", accion = "anular", entidadIdExpression = "#ventaId")
     public AnulacionResultado anular(Integer ventaId, String motivo) {
         Venta venta = buscarVenta(ventaId);
+        AuditoriaContext.registrarAntes(venta);
         venta.anular();
         venta = ventaRepository.guardar(venta);
 

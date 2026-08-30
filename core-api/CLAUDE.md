@@ -140,6 +140,19 @@ reglas del proyecto que no deben repetirse en cada prompt.
   no solo la primera. Ejemplo real ya resuelto: `GET /caja/jornadas` y
   `GET /ventas`, ambos con `fecha_inicio`/`fecha_fin` opcionales (ver
   `CajaJornadaJpaRepository.listarEnRango` y `VentaJpaRepository.listar`).
+- **Columna JSON/JSONB mapeada como `JsonNode` vía `@JdbcTypeCode(SqlTypes.JSON)`
+  que nunca se actualiza después de creada: DEBE llevar `@Immutable`
+  (`org.hibernate.annotations`) en el campo.** Sin esto, el
+  dirty-checking de Hibernate 6 no logra un snapshot estable de
+  `JsonNode` y genera un `UPDATE` redundante en cada `INSERT`, aunque el
+  valor nunca haya cambiado. Si la tabla además tiene `REVOKE UPDATE`
+  para el rol de runtime (como `evento_auditoria`, append-only a
+  propósito), ese `UPDATE` fantasma falla con `permission denied` y
+  tumba la transacción completa — un bug que se ve como si la protección
+  append-only estuviera "funcionando", pero por la razón equivocada (el
+  `INSERT` real ya se había ejecutado bien; lo único que fallaba era el
+  `UPDATE` que nunca debió emitirse). Caso real ya resuelto:
+  `EventoAuditoria.datosAntes`/`datosDespues` (`shared.auditoria`).
 
 ## Cifrado de credenciales Factus (riesgo conocido, no resuelto)
 
@@ -233,6 +246,21 @@ reglas del proyecto que no deben repetirse en cada prompt.
 - Nunca acceder a `domain`/`application`/`infrastructure` de otro módulo
   directamente — correr `mvn test -Dtest=ModularityTests` antes de cualquier
   commit importante para confirmar que los límites se respetan.
+- **Dos módulos distintos mapeando la MISMA tabla física con propósito
+  distinto** (ej. `operacion.Turno` para autoregistro del empleado vs
+  `personal.Turno` para gestión Admin/Jefe, ambas mapean `turno`): hay que
+  nombrar EXPLÍCITAMENTE desde el principio tanto el bean de Spring
+  (`@Service("nombreX")` en la clase de servicio, y cualquier otro
+  componente con nombre de clase repetido — controller, repositorio JPA,
+  adapter) como el nombre lógico de la entidad JPA (`@Entity(name =
+  "NombreX")`). El nombre de clase por defecto choca en silencio en
+  ambos casos, pero por mecanismos distintos aunque el síntoma se vea
+  parecido: Spring tira `ConflictingBeanDefinitionException` (bean name
+  duplicado, resuelto por nombre de clase en minúscula) y Hibernate tira
+  `DuplicateMappingException` (registro de nombres de entidad, mecanismo
+  separado del bean name de Spring). Caso real ya resuelto:
+  `operacion.Turno` vs `personal.Turno` (`PersonalTurno` como nombre de
+  entidad JPA y bean de servicio).
 - `shared/` es el único paquete `OPEN` de Modulith (tenant, seguridad,
   auditoría, excepciones) — accesible libremente desde cualquier módulo.
 - Multi-tenancy vía Row Level Security de Postgres, `SET LOCAL
@@ -242,6 +270,35 @@ reglas del proyecto que no deben repetirse en cada prompt.
 - RBAC dinámico vía `PermissionEvaluator` nativo de Spring Security
   (`@PreAuthorize("hasPermission('modulo.subvista', 'accion')")`), con caché
   Caffeine por `(tenant_id, rol_id)`.
+
+## Manejo de `AccessDeniedException` (regla crítica, no negociable)
+
+- **`GlobalExceptionHandler.handleAccessDenied` DEBE resolver el 403
+  directo (devolver un `ResponseEntity`), NUNCA relanzar la excepción.**
+  Bug real ya confirmado y arreglado: relanzarla asumiendo que
+  `ExceptionTranslationFilter` la traduce a 403 dentro del mismo
+  dispatch es una suposición falsa en este proyecto — cuando la
+  excepción se origina en un `@PreAuthorize` de un método de
+  controller, escapa sin resolver, Spring Boot la reenvía a `/error`
+  (dispatch tipo ERROR), y en ese dispatch los filtros de seguridad NO
+  vuelven a correr → `SecurityContext` vacío → `ExceptionTranslationFilter`
+  lo clasifica como "necesita autenticación" y devuelve 401 "Sesión
+  inválida o expirada" en vez de un 403 real. Afecta a CUALQUIER
+  `@PreAuthorize` denegado de cualquier módulo, no depende del catálogo
+  de permisos de ese módulo puntual — descubierto probando RBAC real
+  del módulo Gastos, pero preexistía en todo el proyecto.
+- **Relación con el catch-all `Exception.class` de la misma clase
+  (fix anterior, ver su Javadoc): son el MISMO mecanismo, síntomas
+  inversos.** El catch-all ya resuelve cualquier excepción no manejada
+  ADENTRO del ciclo normal de `DispatcherServlet` para evitar el reenvío
+  a `/error` (que ahí convertía un 500 real en un 403 vacío sin
+  relación con permisos). Este fix aplica el mismo principio a
+  `AccessDeniedException` específicamente. **Si se toca cualquiera de
+  los dos handlers en el futuro, verificar AMBOS síntomas con una
+  prueba real**: una excepción de negación de permiso real da 403 (no
+  401), Y una excepción genérica no relacionada con seguridad sigue
+  dando 500 real (no 403 ni 401) — confirmado con un
+  `RuntimeException` de prueba forzado a propósito, no asumido.
 
 ## PIN de step-up (regla obligatoria para acciones con `requiere_pin=true`)
 

@@ -18,6 +18,8 @@ import com.cafepos.core.inventario.application.InsumoService;
 import com.cafepos.core.inventario.application.LoteInsumoService;
 import com.cafepos.core.inventario.application.MovimientoInventarioService;
 import com.cafepos.core.inventario.domain.ReversionInsumoResultado;
+import com.cafepos.core.shared.auditoria.Auditable;
+import com.cafepos.core.shared.auditoria.AuditoriaContext;
 import com.cafepos.core.shared.codigo.GeneradorCodigo;
 import com.cafepos.core.shared.tenant.TenantContext;
 import org.slf4j.Logger;
@@ -135,8 +137,10 @@ public class CompraService {
      * movimiento de salida.
      */
     @Transactional
+    @Auditable(entidadTipo = "compra", accion = "anular", entidadIdExpression = "#id")
     public AnularCompraResultado anular(Integer id, Integer usuarioId) {
         Compra compra = buscarPorId(id);
+        AuditoriaContext.registrarAntes(compra);
         if (compra.bloqueadaParaAnular()) {
             throw new CompraAnuladaBloqueadaException();
         }
