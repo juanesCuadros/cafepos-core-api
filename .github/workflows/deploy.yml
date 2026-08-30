@@ -38,3 +38,9 @@ jobs:
             cd ~/resttodash
             docker compose build --no-cache core-api admin-api
             docker compose up -d core-api admin-api
+            # core-api/admin-api quedan con IP nueva en la red de Docker al
+            # recrearse — nginx no siempre la recoge solo (visto en vivo:
+            # 502 sostenido con el contenedor nuevo ya sano, hasta hacer
+            # este reload a mano). El resolver con TTL corto no alcanza a
+            # cubrir esto de forma confiable, asi que se fuerza siempre.
+            docker exec resttodash-nginx nginx -s reload
