@@ -131,8 +131,8 @@ class ContabilidadRepositoryAdapter implements ContabilidadRepository {
                                                                      LocalDate fechaFin) {
         return jpaRepository.listarCajaMovimientoEnRango(tipo, inicioDeDiaUtc(fechaInicio),
                         inicioDeDiaSiguienteUtc(fechaFin)).stream()
-                .map(row -> new CajaMovimientoContable(row.getFechaHora().atOffset(ZoneOffset.UTC), row.getMonto(),
-                        row.getMotivo(), row.getUsuarioNombre()))
+                .map(row -> new CajaMovimientoContable(row.getId(), row.getFechaHora().atOffset(ZoneOffset.UTC),
+                        row.getMonto(), row.getMotivo(), row.getUsuarioNombre()))
                 .toList();
     }
 }

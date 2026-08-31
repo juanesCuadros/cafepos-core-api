@@ -5,6 +5,8 @@ import java.time.Instant;
 
 interface CajaMovimientoContableRow {
 
+    Integer getId();
+
     Instant getFechaHora();
 
     BigDecimal getMonto();

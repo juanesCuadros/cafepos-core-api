@@ -150,7 +150,7 @@ interface ContabilidadJpaRepository extends TenantAwareRepository<Usuario, Integ
     List<GastoContableRow> listarGastosEnRango(@Param("fechaInicio") LocalDate fechaInicio,
                                                 @Param("fechaFin") LocalDate fechaFin);
 
-    @Query(value = "SELECT cm.fecha_hora AS fecha_hora, cm.monto AS monto, cm.motivo AS motivo, "
+    @Query(value = "SELECT cm.id AS id, cm.fecha_hora AS fecha_hora, cm.monto AS monto, cm.motivo AS motivo, "
             + "u.nombre AS usuario_nombre "
             + "FROM caja_movimiento cm "
             + "JOIN usuario u ON u.id = cm.usuario_id "

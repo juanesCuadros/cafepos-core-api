@@ -161,31 +161,31 @@ public class ContabilidadService {
             for (VentaContable v : contabilidadRepository.listarVentasCobradasEnRango(fi, ff, metodoPagoId)) {
                 // mesa.numero ya incluye la palabra "Mesa" (ej. "Mesa 1"), sin concatenarla de nuevo.
                 String descripcion = v.mesaNumero() != null ? "Venta " + v.mesaNumero() : "Venta " + v.codigo();
-                resultado.add(new Transaccion(v.fechaHora(), v.codigo(), Transaccion.TIPO_VENTA, descripcion,
+                resultado.add(new Transaccion(v.fechaHora(), null, v.codigo(), Transaccion.TIPO_VENTA, descripcion,
                         v.total(), v.metodoPago(), v.usuarioNombre()));
             }
         }
         if (tipo == null || Transaccion.TIPO_COMPRA.equals(tipo)) {
             for (CompraContable c : contabilidadRepository.listarComprasPagadasEnRango(fi, ff)) {
-                resultado.add(new Transaccion(c.fechaHora(), c.codigo(), Transaccion.TIPO_COMPRA,
+                resultado.add(new Transaccion(c.fechaHora(), null, c.codigo(), Transaccion.TIPO_COMPRA,
                         "Compra a " + c.proveedorNombre(), c.total().negate(), null, c.usuarioNombre()));
             }
         }
         if (tipo == null || Transaccion.TIPO_GASTO.equals(tipo)) {
             for (GastoContable g : contabilidadRepository.listarGastosEnRango(fi, ff)) {
-                resultado.add(new Transaccion(g.fechaHora(), g.codigo(), Transaccion.TIPO_GASTO, g.descripcion(),
+                resultado.add(new Transaccion(g.fechaHora(), null, g.codigo(), Transaccion.TIPO_GASTO, g.descripcion(),
                         g.monto().negate(), g.metodoPago(), g.usuarioNombre()));
             }
         }
         if (tipo == null || Transaccion.TIPO_EGRESO_CAJA.equals(tipo)) {
             for (CajaMovimientoContable m : contabilidadRepository.listarCajaMovimientoEnRango("egreso", fi, ff)) {
-                resultado.add(new Transaccion(m.fechaHora(), null, Transaccion.TIPO_EGRESO_CAJA, m.motivo(),
+                resultado.add(new Transaccion(m.fechaHora(), m.id(), null, Transaccion.TIPO_EGRESO_CAJA, m.motivo(),
                         m.monto().negate(), null, m.usuarioNombre()));
             }
         }
         if (tipo == null || Transaccion.TIPO_INGRESO_CAJA.equals(tipo)) {
             for (CajaMovimientoContable m : contabilidadRepository.listarCajaMovimientoEnRango("ingreso", fi, ff)) {
-                resultado.add(new Transaccion(m.fechaHora(), null, Transaccion.TIPO_INGRESO_CAJA, m.motivo(),
+                resultado.add(new Transaccion(m.fechaHora(), m.id(), null, Transaccion.TIPO_INGRESO_CAJA, m.motivo(),
                         m.monto(), null, m.usuarioNombre()));
             }
         }
