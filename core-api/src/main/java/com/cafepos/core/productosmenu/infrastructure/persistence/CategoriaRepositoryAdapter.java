@@ -30,7 +30,7 @@ class CategoriaRepositoryAdapter implements CategoriaRepository {
     @Override
     public List<CategoriaResumen> listarConNumProductos() {
         return jpaRepository.listarConNumProductos().stream()
-                .map(row -> new CategoriaResumen(row.getId(), row.getIcono(), row.getNombre(),
+                .map(row -> new CategoriaResumen(row.getId(), row.getIcono(), row.getNombre(), row.getDescripcion(),
                         row.getOrden(), row.getNumProductos(), row.getEstado()))
                 .toList();
     }

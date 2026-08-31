@@ -9,6 +9,8 @@ interface CategoriaResumenRow {
 
     String getNombre();
 
+    String getDescripcion();
+
     Integer getOrden();
 
     String getEstado();

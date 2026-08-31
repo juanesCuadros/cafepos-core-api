@@ -14,10 +14,10 @@ interface CategoriaJpaRepository extends TenantAwareRepository<Categoria, Intege
      * memoria para contarlos en Java. RLS filtra tanto categoria como
      * producto por tenant_id automaticamente (ver TenantAwareRepository).
      */
-    @Query(value = "SELECT c.id AS id, c.icono AS icono, c.nombre AS nombre, c.orden AS orden, "
-            + "c.estado AS estado, COUNT(p.id) AS num_productos "
+    @Query(value = "SELECT c.id AS id, c.icono AS icono, c.nombre AS nombre, c.descripcion AS descripcion, "
+            + "c.orden AS orden, c.estado AS estado, COUNT(p.id) AS num_productos "
             + "FROM categoria c LEFT JOIN producto p ON p.categoria_id = c.id "
-            + "GROUP BY c.id, c.icono, c.nombre, c.orden, c.estado "
+            + "GROUP BY c.id, c.icono, c.nombre, c.descripcion, c.orden, c.estado "
             + "ORDER BY c.orden", nativeQuery = true)
     List<CategoriaResumenRow> listarConNumProductos();
 
