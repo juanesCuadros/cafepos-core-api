@@ -144,6 +144,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(mensaje));
     }
 
+    @ExceptionHandler(ArchivoInvalidoException.class)
+    public ResponseEntity<ErrorResponse> handleArchivoInvalido(ArchivoInvalidoException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));
+    }
+
     /**
      * Catch-all: cualquier excepcion no manejada por un handler especifico
      * (de aca o de un modulo) es un bug real, nunca una negacion de

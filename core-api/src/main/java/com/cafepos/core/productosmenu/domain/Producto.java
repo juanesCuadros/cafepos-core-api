@@ -175,6 +175,11 @@ public class Producto {
         this.updatedAt = OffsetDateTime.now();
     }
 
+    public void actualizarImagen(String imagen) {
+        this.imagen = imagen;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
     /** DELETE con ventas asociadas — soft delete en vez de borrado fisico (ver ProductoService.eliminar). */
     public void marcarInactivo() {
         this.estado = ESTADO_INACTIVO;

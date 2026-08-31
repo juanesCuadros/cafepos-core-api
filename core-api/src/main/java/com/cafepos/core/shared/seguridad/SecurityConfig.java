@@ -122,7 +122,7 @@ public class SecurityConfig {
                         // normal (que solo sabe leer el header) rechaza el
                         // handshake con 401 antes de que el interceptor de WS
                         // llegue a correr.
-                        .requestMatchers(RutasAuth.LOGIN, RutasAuth.REFRESH, RutasAuth.LOGOUT, "/menu-publico", "/ws/**")
+                        .requestMatchers(RutasAuth.LOGIN, RutasAuth.REFRESH, RutasAuth.LOGOUT, "/menu-publico", "/ws/**", "/uploads/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 // Sin esto, Spring Security responde 403 tanto para "no estas

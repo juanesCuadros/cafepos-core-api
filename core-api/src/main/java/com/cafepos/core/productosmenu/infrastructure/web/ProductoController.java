@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
 @RequestMapping("/productos")
@@ -79,5 +82,14 @@ public class ProductoController {
         return resultado == ResultadoEliminacionProducto.MARCADO_INACTIVO
                 ? ProductoEliminadoResponse.marcadoInactivo()
                 : ProductoEliminadoResponse.ELIMINADO;
+    }
+
+    @PostMapping(value = "/{id}/imagen", consumes = "multipart/form-data")
+    @PreAuthorize("hasPermission('productos_menu.productos', 'editar')")
+    @Operation(summary = "Sube la imagen de un producto")
+    public ProductoImagenResponse subirImagen(@PathVariable Integer id, @RequestParam("archivo") MultipartFile archivo, HttpServletRequest request) {
+        String baseUrl = ServletUriComponentsBuilder.fromRequestUri(request).replacePath(null).build().toUriString();
+        String urlCompleta = productoService.subirImagen(id, archivo, baseUrl);
+        return new ProductoImagenResponse(urlCompleta);
     }
 }

@@ -15,6 +15,18 @@ import com.cafepos.core.shared.tenant.TenantContext;
 import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import com.cafepos.core.shared.excepciones.ArchivoInvalidoException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.StringUtils;
+
+import javax.imageio.ImageIO;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.UUID;
+
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -34,10 +46,12 @@ public class ProductoService {
 
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
+    private final String uploadsBasePath;
 
-    public ProductoService(ProductoRepository productoRepository, CategoriaRepository categoriaRepository) {
+    public ProductoService(ProductoRepository productoRepository, CategoriaRepository categoriaRepository, @Value("${cafepos.uploads.base-path}") String uploadsBasePath) {
         this.productoRepository = productoRepository;
         this.categoriaRepository = categoriaRepository;
+        this.uploadsBasePath = uploadsBasePath;
     }
 
     @Transactional(readOnly = true)
@@ -125,5 +139,60 @@ public class ProductoService {
         if (areaCocinaId != null && !productoRepository.existeAreaCocina(areaCocinaId)) {
             throw new AreaCocinaNoEncontradaException();
         }
+    }
+
+    @Transactional
+    public String subirImagen(Integer id, MultipartFile archivo, String baseUrl) {
+        Producto producto = productoRepository.buscarPorId(id).orElseThrow(ProductoNoEncontradoException::new);
+        
+        String originalFilename = archivo.getOriginalFilename();
+        if (originalFilename == null) {
+            throw new ArchivoInvalidoException("Archivo sin nombre");
+        }
+        
+        String ext = StringUtils.getFilenameExtension(originalFilename);
+        if (ext == null || !ext.matches("(?i)^(jpg|jpeg|png|webp)$")) {
+            throw new ArchivoInvalidoException("Extensión inválida, solo se permite .jpg, .jpeg, .png, .webp");
+        }
+        
+        try (InputStream is = archivo.getInputStream()) {
+            if (ImageIO.read(is) == null) {
+                throw new ArchivoInvalidoException("El archivo no es una imagen válida");
+            }
+        } catch (Exception e) {
+            throw new ArchivoInvalidoException("El archivo no es una imagen válida");
+        }
+        
+        Integer tenantId = TenantContext.getCurrentTenantId();
+        String uuid = UUID.randomUUID().toString();
+        String nuevoNombre = uuid + "." + ext.toLowerCase();
+        
+        Path dirPath = Paths.get(uploadsBasePath, "productos", String.valueOf(tenantId)).toAbsolutePath();
+        Path filePath = dirPath.resolve(nuevoNombre);
+        
+        try {
+            Files.createDirectories(dirPath);
+            archivo.transferTo(filePath.toFile());
+        } catch (Exception e) {
+            throw new RuntimeException("Error al guardar el archivo en " + filePath, e);
+        }
+        
+        String urlAnterior = producto.getImagen();
+        if (urlAnterior != null && urlAnterior.contains("/uploads/productos/" + tenantId + "/")) {
+            try {
+                String oldFilename = urlAnterior.substring(urlAnterior.lastIndexOf("/") + 1);
+                Path oldFilePath = dirPath.resolve(oldFilename);
+                Files.deleteIfExists(oldFilePath);
+            } catch (Exception e) {
+                // Ignore delete error as per requirements
+                System.out.println("WARN: Could not delete old image " + urlAnterior);
+            }
+        }
+        
+        String nuevaUrl = baseUrl + "/uploads/productos/" + tenantId + "/" + nuevoNombre;
+        producto.actualizarImagen(nuevaUrl);
+        productoRepository.guardar(producto);
+        
+        return nuevaUrl;
     }
 }

@@ -32,6 +32,8 @@ cafepos:
     # usar en produccion (ahi sale de CAFEPOS_FACTUS_ENCRYPTION_KEY como
     # variable de entorno real, ver application.yml).
     encryption-key: MvywKIMVe+RWrI7GSnt+1aSf9znpzXRFIPxmeQ+psQU=
+  uploads:
+    base-path: ./uploads-dev
 
 # Swagger UI / OpenAPI — habilitado SOLO en dev (ver application.yml, donde
 # queda deshabilitado por defecto). Recordar: mientras no exista
