@@ -15,8 +15,8 @@ import java.util.List;
  */
 interface ProveedorJpaRepository extends TenantAwareRepository<Proveedor, Integer> {
 
-    @Query(value = "SELECT id AS id, codigo AS codigo, nombre AS nombre, nit AS nit, telefono AS telefono, "
-            + "estado AS estado FROM proveedor "
+    @Query(value = "SELECT id AS id, codigo AS codigo, nombre AS nombre, nit AS nit, contacto AS contacto, "
+            + "telefono AS telefono, estado AS estado FROM proveedor "
             + "WHERE (CAST(:estado AS varchar) IS NULL OR estado = CAST(:estado AS varchar)) "
             + "AND (CAST(:q AS varchar) IS NULL OR nombre ILIKE '%' || CAST(:q AS varchar) || '%') "
             + "ORDER BY nombre", nativeQuery = true)

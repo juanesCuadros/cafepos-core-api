@@ -11,6 +11,8 @@ interface ProveedorResumenRow {
 
     String getNit();
 
+    String getContacto();
+
     String getTelefono();
 
     String getEstado();

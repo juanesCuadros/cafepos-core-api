@@ -31,7 +31,7 @@ class ProveedorRepositoryAdapter implements ProveedorRepository {
     public List<ProveedorResumen> listar(String estado, String q) {
         return jpaRepository.listar(estado, q).stream()
                 .map(row -> new ProveedorResumen(row.getId(), row.getCodigo(), row.getNombre(), row.getNit(),
-                        row.getTelefono(), row.getEstado()))
+                        row.getContacto(), row.getTelefono(), row.getEstado()))
                 .toList();
     }
 
