@@ -33,7 +33,8 @@ class ProductoRepositoryAdapter implements ProductoRepository {
         return jpaRepository.listar(categoriaId, estado, q).stream()
                 .map(row -> new ProductoResumen(row.getId(), row.getCodigo(), row.getNombre(),
                         row.getCategoriaId(), row.getCategoriaNombre(), row.getImagen(),
-                        row.getPrecioVenta(), row.getEstado()))
+                        row.getPrecioVenta(), row.getEstado(), row.getVisibilidad(),
+                        Boolean.TRUE.equals(row.getManejaReceta())))
                 .toList();
     }
 

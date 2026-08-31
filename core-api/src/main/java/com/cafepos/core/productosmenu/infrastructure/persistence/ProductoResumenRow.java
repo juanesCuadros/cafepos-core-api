@@ -20,4 +20,8 @@ interface ProductoResumenRow {
     BigDecimal getPrecioVenta();
 
     String getEstado();
+
+    String getVisibilidad();
+
+    Boolean getManejaReceta();
 }

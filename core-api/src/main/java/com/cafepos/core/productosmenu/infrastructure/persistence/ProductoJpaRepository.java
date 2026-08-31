@@ -19,11 +19,12 @@ interface ProductoJpaRepository extends TenantAwareRepository<Producto, Integer>
      */
     @Query(value = "SELECT p.id AS id, p.codigo AS codigo, p.nombre AS nombre, "
             + "c.id AS categoria_id, c.nombre AS categoria_nombre, "
-            + "p.imagen AS imagen, p.precio_venta AS precio_venta, p.estado AS estado "
+            + "p.imagen AS imagen, p.precio_venta AS precio_venta, p.estado AS estado, "
+            + "p.visibilidad AS visibilidad, p.maneja_receta AS maneja_receta "
             + "FROM producto p JOIN categoria c ON c.id = p.categoria_id "
-            + "WHERE (:categoriaId IS NULL OR p.categoria_id = :categoriaId) "
-            + "AND (:estado IS NULL OR p.estado = :estado) "
-            + "AND (:q IS NULL OR p.nombre ILIKE '%' || :q || '%') "
+            + "WHERE (CAST(:categoriaId AS int) IS NULL OR p.categoria_id = CAST(:categoriaId AS int)) "
+            + "AND (CAST(:estado AS varchar) IS NULL OR p.estado = CAST(:estado AS varchar)) "
+            + "AND (CAST(:q AS varchar) IS NULL OR p.nombre ILIKE '%' || CAST(:q AS varchar) || '%') "
             + "ORDER BY p.nombre", nativeQuery = true)
     List<ProductoResumenRow> listar(@Param("categoriaId") Integer categoriaId,
                                      @Param("estado") String estado,
