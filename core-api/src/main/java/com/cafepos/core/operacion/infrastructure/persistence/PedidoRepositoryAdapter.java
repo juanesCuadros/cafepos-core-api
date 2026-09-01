@@ -28,7 +28,9 @@ class PedidoRepositoryAdapter implements PedidoRepository {
 
     @Override
     public Optional<Pedido> buscarActivoPorMesa(Integer mesaId) {
-        return jpaRepository.findByMesaIdAndEstadoNot(mesaId, Pedido.ESTADO_CERRADO);
+        List<Pedido> activos = jpaRepository.findByMesaIdAndEstadoNotOrderByFechaAperturaDesc(mesaId,
+                Pedido.ESTADO_CERRADO);
+        return activos.isEmpty() ? Optional.empty() : Optional.of(activos.get(0));
     }
 
     @Override

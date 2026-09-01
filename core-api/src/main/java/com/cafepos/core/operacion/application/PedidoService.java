@@ -39,6 +39,7 @@ import com.cafepos.core.shared.seguridad.UsuarioRepository;
 import com.cafepos.core.shared.tenant.TenantContext;
 import com.cafepos.core.shared.websocket.NotificacionesWebSocketService;
 import org.openapitools.jackson.nullable.JsonNullable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -114,13 +115,31 @@ public class PedidoService {
         return abrirVentaRapida(usuarioId);
     }
 
+    /**
+     * El chequeo de abajo (buscarActivoPorMesa) es "check-then-act" sin
+     * bloqueo — dos requests casi simultaneos para la misma mesa pueden
+     * pasarlo los dos antes de que ninguno confirme su INSERT (confirmado
+     * real en produccion, 01-sep-2026: rompio GET /operacion/mesas entero
+     * para el tenant, ver V29__pedido_mesa_activo_unico.sql). La garantia
+     * real es el indice unico parcial de esa migracion — este chequeo previo
+     * sigue sirviendo para el caso normal (dar MesaOcupadaException con un
+     * mensaje legible sin ni siquiera intentar el INSERT), pero si igual se
+     * pierde la carrera, el INSERT choca contra el indice y Postgres tira
+     * DataIntegrityViolationException — se traduce al mismo error legible en
+     * vez de dejarlo escapar como 500 generico.
+     */
     private PedidoDetalle abrirDeMesa(Integer mesaId, Integer usuarioId) {
         zonaService.buscarMesaResumenPorId(mesaId).orElseThrow(MesaNoEncontradaException::new);
         pedidoRepository.buscarActivoPorMesa(mesaId).ifPresent(p -> {
             throw new MesaOcupadaException();
         });
 
-        Pedido pedido = crearPedido(mesaId, Pedido.TIPO_MESA, usuarioId);
+        Pedido pedido;
+        try {
+            pedido = crearPedido(mesaId, Pedido.TIPO_MESA, usuarioId);
+        } catch (DataIntegrityViolationException ex) {
+            throw new MesaOcupadaException();
+        }
         zonaService.cambiarEstadoMesa(mesaId, MESA_ESTADO_OCUPADA);
         return construirDetalle(pedido);
     }
