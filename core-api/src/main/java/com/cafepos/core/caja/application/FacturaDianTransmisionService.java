@@ -28,6 +28,7 @@ import com.cafepos.core.restaurante.domain.CredencialesFactus;
 import com.cafepos.core.restaurante.domain.MetodoPagoResumen;
 import com.cafepos.core.shared.impuestos.ResolverTasaImpuesto;
 import com.cafepos.core.shared.tenant.TenantContext;
+import com.cafepos.core.shared.websocket.NotificacionesWebSocketService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -85,6 +86,7 @@ public class FacturaDianTransmisionService {
     private final ConfiguracionSistemaService configuracionSistemaService;
     private final FacturaDianTransmisorPort transmisorPort;
     private final ExecutorService facturaDianTransmisionExecutor;
+    private final NotificacionesWebSocketService notificacionesWebSocketService;
 
     public FacturaDianTransmisionService(FacturaDianRepository facturaDianRepository, VentaRepository ventaRepository,
                                           VentaPagoRepository ventaPagoRepository, PedidoService pedidoService,
@@ -92,7 +94,8 @@ public class FacturaDianTransmisionService {
                                           FacturacionDianService facturacionDianService,
                                           ConfiguracionSistemaService configuracionSistemaService,
                                           FacturaDianTransmisorPort transmisorPort,
-                                          ExecutorService facturaDianTransmisionExecutor) {
+                                          ExecutorService facturaDianTransmisionExecutor,
+                                          NotificacionesWebSocketService notificacionesWebSocketService) {
         this.facturaDianRepository = facturaDianRepository;
         this.ventaRepository = ventaRepository;
         this.ventaPagoRepository = ventaPagoRepository;
@@ -103,6 +106,7 @@ public class FacturaDianTransmisionService {
         this.configuracionSistemaService = configuracionSistemaService;
         this.transmisorPort = transmisorPort;
         this.facturaDianTransmisionExecutor = facturaDianTransmisionExecutor;
+        this.notificacionesWebSocketService = notificacionesWebSocketService;
     }
 
     public void programarTransmisionTrasCommit(Integer facturaDianId, Integer tenantId) {
@@ -160,6 +164,14 @@ public class FacturaDianTransmisionService {
             aActualizar.actualizarConResultadoFactus(resultado.numeroFactura(), resultado.cufe(),
                     resultado.qrCode(), resultado.validado());
             facturaDianRepository.guardar(aActualizar);
+            // Aviso al frontend de que ESTA factura ya tiene resultado real de
+            // la DIAN — sin esto el canal WS existia en los dos lados pero
+            // nadie lo disparaba nunca, y FacturaEspera caia a preguntar por
+            // HTTP cada 3s (ver INTEGRACION.md hallazgo 3.43). El estado solo
+            // cambia en esta rama: si la llamada a Factus falla (auth, red,
+            // timeout) la factura queda 'pendiente' y no hay nada nuevo que
+            // notificar.
+            notificacionesWebSocketService.facturaActualizada(aActualizar.getTenantId(), facturaDianId);
         } else {
             log.warn("Factus no acepto la transmision de la factura {}: {}", facturaDianId, resultado.mensajeError());
         }
