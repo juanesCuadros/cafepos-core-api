@@ -107,7 +107,7 @@ public class SecurityConfig {
                                               TenantRepository tenantRepository,
                                               @Value("${cafepos.tenant.base-domain}") String tenantBaseDomain,
                                               JwtBlacklistService jwtBlacklistService) throws Exception {
-        JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtService, jwtBlacklistService);
+        JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtService, jwtBlacklistService, filterErrorWriter);
         TenantFilter tenantFilter = new TenantFilter(tenantBaseDomain, tenantRepository, filterErrorWriter);
         SuscripcionFilter suscripcionFilter = new SuscripcionFilter(tenantRepository, filterErrorWriter);
         DebeCambiarPasswordFilter debeCambiarPasswordFilter = new DebeCambiarPasswordFilter(filterErrorWriter);

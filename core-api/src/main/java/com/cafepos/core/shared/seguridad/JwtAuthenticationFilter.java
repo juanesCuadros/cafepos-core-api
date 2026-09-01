@@ -20,23 +20,32 @@ import java.util.List;
  * valido, sigue sin autenticar — el filtro NO rechaza el request, eso lo
  * decide authorizeHttpRequests() mas abajo en la chain (ver SecurityConfig).
  */
+import com.cafepos.core.shared.excepciones.FilterErrorWriter;
+
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtService jwtService;
     private final JwtBlacklistService jwtBlacklistService;
+    private final FilterErrorWriter filterErrorWriter;
 
-    public JwtAuthenticationFilter(JwtService jwtService, JwtBlacklistService jwtBlacklistService) {
+    public JwtAuthenticationFilter(JwtService jwtService, JwtBlacklistService jwtBlacklistService, FilterErrorWriter filterErrorWriter) {
         this.jwtService = jwtService;
         this.jwtBlacklistService = jwtBlacklistService;
+        this.filterErrorWriter = filterErrorWriter;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                      FilterChain filterChain) throws ServletException, IOException {
         String token = extraerToken(request);
-        if (token != null && !jwtBlacklistService.isBlacklisted(token)) {
+        if (token != null) {
+            if (jwtBlacklistService.isBlacklisted(token)) {
+                SecurityContextHolder.clearContext();
+                filterErrorWriter.escribir(response, HttpServletResponse.SC_UNAUTHORIZED, "Sesión inválida o expirada, inicia sesión nuevamente", "NO_AUTENTICADO");
+                return;
+            }
             try {
                 Claims claims = jwtService.parseClaims(token);
                 AuthenticatedUsuario principal = new AuthenticatedUsuario(
@@ -46,6 +55,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (JwtException | IllegalArgumentException e) {
                 SecurityContextHolder.clearContext();
+                filterErrorWriter.escribir(response, HttpServletResponse.SC_UNAUTHORIZED, "Sesión inválida o expirada, inicia sesión nuevamente", "NO_AUTENTICADO");
+                return;
             }
         }
         filterChain.doFilter(request, response);
