@@ -7,6 +7,8 @@ import com.cafepos.admin.negocios.domain.TenantRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 /**
  * Configuracion PERMANENTE de credenciales Factus por tenant, exclusiva de
  * Super Admin — reemplaza el endpoint temporal que existia en core-api
@@ -31,13 +33,14 @@ public class FacturacionDianAdminService {
 
     @Transactional
     public void configurarCredenciales(Integer tenantId, String ambienteFactus, String clientId, String clientSecret,
-                                        String username, String password, Long rangoInicio, Long rangoFin) {
+                                        String username, String password, Long rangoInicio, Long rangoFin,
+                                        String prefijo, LocalDate fechaExpedicion, LocalDate fechaVencimiento) {
         tenantRepository.findById(tenantId).orElseThrow(TenantNoEncontradoException::new);
 
         FacturacionDianResolucion resolucion = facturacionDianResolucionRepository.buscarVigentePorTenant(tenantId)
                 .orElseGet(() -> FacturacionDianResolucion.crear(tenantId));
         resolucion.configurarCredencialesFactus(clientId, clientSecret, username, password, rangoInicio, rangoFin,
-                mapearAmbienteDb(ambienteFactus), "vigente");
+                mapearAmbienteDb(ambienteFactus), "vigente", prefijo, fechaExpedicion, fechaVencimiento);
         facturacionDianResolucionRepository.guardar(resolucion);
     }
 

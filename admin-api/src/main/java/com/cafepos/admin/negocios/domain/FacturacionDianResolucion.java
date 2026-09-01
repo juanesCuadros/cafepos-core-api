@@ -12,6 +12,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 /**
@@ -20,10 +21,13 @@ import java.time.OffsetDateTime;
  * en el repositorio de core-api — admin-api no tiene migraciones propias,
  * ver CLAUDE.md). Unico proposito de esta entidad en admin-api: que Super
  * Admin pueda configurar las credenciales Factus de cualquier tenant (ver
- * FacturacionDianAdminService, unico caller). Los campos de numeracion real
- * (prefijo, numeracion_actual, fecha_expedicion/vencimiento) NO se mapean
- * aca — esta entidad es solo de escritura de credenciales+rango+ambiente,
- * a diferencia de core-api que ademas necesita leerlos/incrementarlos.
+ * FacturacionDianAdminService, unico caller). prefijo/fecha_expedicion/
+ * fecha_vencimiento SI se mapean desde 01-sep-2026 (ver INTEGRACION.md
+ * hallazgo 3.45): antes no habia NINGUNA forma de configurarlos por API y
+ * habia que escribirlos a mano en la base, aunque son datos que la DIAN
+ * asigna por resolucion y cambian por tenant. numeracion_actual sigue sin
+ * exponerse a proposito: es un contador de runtime que solo core-api debe
+ * mover (reservarSiguienteNumeroFactura), nunca Super Admin a mano.
  *
  * CRITICO DE SEGURIDAD: client_id_factus/client_secret_factus/username_factus/
  * password_factus SI se mapean (necesario para que @Convert cifre) pero
@@ -44,6 +48,15 @@ public class FacturacionDianResolucion {
 
     @Column(name = "tenant_id", nullable = false)
     private Integer tenantId;
+
+    @Column
+    private String prefijo;
+
+    @Column(name = "fecha_expedicion")
+    private LocalDate fechaExpedicion;
+
+    @Column(name = "fecha_vencimiento")
+    private LocalDate fechaVencimiento;
 
     @Column(name = "rango_inicio")
     private Long rangoInicio;
@@ -105,7 +118,8 @@ public class FacturacionDianResolucion {
      */
     public void configurarCredencialesFactus(String clientIdFactus, String clientSecretFactus, String usernameFactus,
                                               String passwordFactus, Long rangoInicio, Long rangoFin, String ambiente,
-                                              String estado) {
+                                              String estado, String prefijo, LocalDate fechaExpedicion,
+                                              LocalDate fechaVencimiento) {
         this.clientIdFactus = clientIdFactus;
         this.clientSecretFactus = clientSecretFactus;
         this.usernameFactus = usernameFactus;
@@ -114,6 +128,19 @@ public class FacturacionDianResolucion {
         this.rangoFin = rangoFin;
         this.ambiente = ambiente;
         this.estado = estado;
+        // prefijo/fechas: null significa "no tocar", NO "borrar" — son
+        // opcionales en el request para no romper integraciones que ya
+        // llamaban a este endpoint sin ellos, y reconfigurar credenciales no
+        // deberia perder el prefijo real que la DIAN asigno por resolucion.
+        if (prefijo != null) {
+            this.prefijo = prefijo;
+        }
+        if (fechaExpedicion != null) {
+            this.fechaExpedicion = fechaExpedicion;
+        }
+        if (fechaVencimiento != null) {
+            this.fechaVencimiento = fechaVencimiento;
+        }
         this.numeracionActual = 0L;
         this.updatedAt = OffsetDateTime.now();
     }
