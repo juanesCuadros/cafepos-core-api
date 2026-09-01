@@ -12,6 +12,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import com.cafepos.core.shared.excepciones.FilterErrorWriter;
 
 /**
  * Lee "Authorization: Bearer <token>", valida el JWT (firma, issuer,
@@ -20,7 +21,6 @@ import java.util.List;
  * valido, sigue sin autenticar — el filtro NO rechaza el request, eso lo
  * decide authorizeHttpRequests() mas abajo en la chain (ver SecurityConfig).
  */
-import com.cafepos.core.shared.excepciones.FilterErrorWriter;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
