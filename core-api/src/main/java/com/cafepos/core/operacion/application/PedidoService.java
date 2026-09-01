@@ -243,27 +243,42 @@ public class PedidoService {
         });
     }
 
-    /** API publica de este modulo para POST /ventas (com.cafepos.core.caja) — no libera la mesa. */
+    /**
+     * API publica de este modulo para POST /ventas (com.cafepos.core.caja).
+     * Libera la mesa de inmediato si el pedido era de tipo 'mesa' — decision
+     * explicita del usuario (31-ago-2026, ver INTEGRACION.md hallazgo 3.40):
+     * antes la mesa solo se liberaba en POST /ventas/{id}/finalizar-entrega,
+     * un paso separado y opcional (elegir "imprimir" o "correo") que
+     * dependia de que el navegador completara window.print() — un dialogo
+     * nativo que el cajero puede cancelar por cualquier motivo, dejando la
+     * mesa ocupada indefinidamente aunque el pago ya estuviera confirmado.
+     * Cobrar y liberar la mesa pasan a ser la misma accion; como se entrega
+     * el comprobante queda como paso totalmente independiente que nunca
+     * bloquea nada (ver finalizarEntrega mas abajo).
+     */
     @Transactional
     public void marcarCerrado(Integer pedidoId) {
         Pedido pedido = buscarPedido(pedidoId);
         pedido.cerrar();
         pedidoRepository.guardar(pedido);
+        if (pedido.getMesaId() != null) {
+            zonaService.cambiarEstadoMesa(pedido.getMesaId(), MESA_ESTADO_LIBRE);
+        }
     }
 
     /**
      * API publica de este modulo para POST /ventas/{id}/finalizar-entrega
-     * (com.cafepos.core.caja) — libera la mesa SOLO si el pedido es tipo
-     * 'mesa'. Devuelve si la libero o no (venta_rapida nunca tiene mesa).
+     * (com.cafepos.core.caja). YA NO libera la mesa — eso pasa a ocurrir en
+     * marcarCerrado() de una vez, en el momento del cobro (ver su Javadoc,
+     * hallazgo 3.40). Este metodo queda puramente informativo: confirma si
+     * el pedido era de tipo 'mesa' (para que la respuesta siga indicando
+     * `mesa_liberada` sin mentir, aunque la liberacion real ya haya pasado
+     * antes) — no muta nada.
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public boolean finalizarEntrega(Integer pedidoId) {
         Pedido pedido = buscarPedido(pedidoId);
-        if (pedido.getMesaId() == null) {
-            return false;
-        }
-        zonaService.cambiarEstadoMesa(pedido.getMesaId(), MESA_ESTADO_LIBRE);
-        return true;
+        return pedido.getMesaId() != null;
     }
 
     private PedidoItemParaVenta aItemParaVenta(PedidoItem item) {
