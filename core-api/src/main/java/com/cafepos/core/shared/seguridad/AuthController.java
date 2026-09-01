@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -86,8 +87,13 @@ public class AuthController {
             @ApiResponse(responseCode = "200", description = "Sesion cerrada (siempre, sin importar el estado previo del token)"),
             @ApiResponse(responseCode = "400", description = "Falta el refresh token en el body")
     })
-    public LogoutResponse logout(@Valid @RequestBody RefreshRequest request) {
-        logoutService.ejecutar(request.refreshToken());
+    public LogoutResponse logout(@Valid @RequestBody RefreshRequest request,
+                                 @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        String accessToken = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            accessToken = authHeader.substring(7);
+        }
+        logoutService.ejecutar(request.refreshToken(), accessToken);
         return LogoutResponse.SESION_CERRADA;
     }
 

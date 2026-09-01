@@ -13,15 +13,29 @@ public class LogoutService {
 
     private final UsuarioRefreshTokenRepository refreshTokenRepository;
     private final RefreshTokenIssuer refreshTokenIssuer;
+    private final JwtBlacklistService jwtBlacklistService;
+    private final JwtService jwtService;
 
     public LogoutService(UsuarioRefreshTokenRepository refreshTokenRepository,
-                          RefreshTokenIssuer refreshTokenIssuer) {
+                          RefreshTokenIssuer refreshTokenIssuer,
+                          JwtBlacklistService jwtBlacklistService,
+                          JwtService jwtService) {
         this.refreshTokenRepository = refreshTokenRepository;
         this.refreshTokenIssuer = refreshTokenIssuer;
+        this.jwtBlacklistService = jwtBlacklistService;
+        this.jwtService = jwtService;
     }
 
     @Transactional
-    public void ejecutar(String rawRefreshToken) {
+    public void ejecutar(String rawRefreshToken, String accessToken) {
+        if (accessToken != null) {
+            try {
+                var claims = jwtService.parseClaims(accessToken);
+                jwtBlacklistService.blacklistToken(accessToken, claims.getExpiration());
+            } catch (Exception e) {
+                // If it's already expired or invalid, it's fine.
+            }
+        }
         String hash = refreshTokenIssuer.hash(rawRefreshToken);
         refreshTokenRepository.findByTokenHash(hash).ifPresent(token -> {
             if (!token.isRevocado()) {
