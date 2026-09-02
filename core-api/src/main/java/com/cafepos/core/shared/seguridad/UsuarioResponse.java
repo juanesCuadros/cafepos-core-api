@@ -1,4 +1,6 @@
 package com.cafepos.core.shared.seguridad;
 
-public record UsuarioResponse(Integer id, String nombre, String correo, String rol, Integer tenantId) {
+import java.util.List;
+
+public record UsuarioResponse(Integer id, String nombre, String correo, String rol, Integer tenantId, List<String> permisos) {
 }

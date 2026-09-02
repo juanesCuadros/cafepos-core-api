@@ -3,10 +3,10 @@ spring:
     # Conexión de RUNTIME de la aplicación — app_tenant es el rol sin
     # BYPASSRLS creado en V1__schema_v4.sql. core-api NUNCA debe
     # conectarse como superusuario para las consultas normales.
-    # Puerto 5434 (no 5432): el 5432 está ocupado por un PostgreSQL nativo
+    # Puerto 5436 (no 5432): el 5432 está ocupado por un PostgreSQL nativo
     # de Windows en esta máquina, y el 5433 por otro contenedor (ipm_bi_db)
     # — ver docker-compose.yml.
-    url: jdbc:postgresql://localhost:5434/cafepos
+    url: jdbc:postgresql://localhost:5436/cafepos
     username: app_tenant
     password: dev_only_password   # ver README: setear con ALTER ROLE tras la 1a migración
 
@@ -14,7 +14,7 @@ spring:
     # Conexión SEPARADA para migraciones — CREATE ROLE / ENABLE ROW LEVEL
     # SECURITY requieren privilegios que app_tenant NO debe tener. Usa el
     # superusuario de docker-compose (postgres/postgres, solo desarrollo).
-    url: jdbc:postgresql://localhost:5434/cafepos
+    url: jdbc:postgresql://localhost:5436/cafepos
     user: postgres
     password: postgres
 

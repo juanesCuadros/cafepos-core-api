@@ -16,17 +16,20 @@ public class TokenPairIssuer {
     private final JwtService jwtService;
     private final RefreshTokenIssuer refreshTokenIssuer;
     private final RolRepository rolRepository;
+    private final PermisoCacheService permisoCacheService;
     private final long refreshTokenTtlHours;
 
     public TokenPairIssuer(UsuarioRefreshTokenRepository refreshTokenRepository,
                             JwtService jwtService,
                             RefreshTokenIssuer refreshTokenIssuer,
                             RolRepository rolRepository,
+                            PermisoCacheService permisoCacheService,
                             @Value("${cafepos.refresh-token.ttl-hours}") long refreshTokenTtlHours) {
         this.refreshTokenRepository = refreshTokenRepository;
         this.jwtService = jwtService;
         this.refreshTokenIssuer = refreshTokenIssuer;
         this.rolRepository = rolRepository;
+        this.permisoCacheService = permisoCacheService;
         this.refreshTokenTtlHours = refreshTokenTtlHours;
     }
 
@@ -36,9 +39,18 @@ public class TokenPairIssuer {
         refreshTokenRepository.save(new UsuarioRefreshToken(
                 usuario.getTenantId(), usuario.getId(), emitido.hash(), expiraEn));
         String accessToken = jwtService.issueAccessToken(usuario);
-        String rolNombre = rolRepository.getReferenceById(usuario.getRolId()).getNombre();
+        
+        Rol rol = rolRepository.findById(usuario.getRolId()).orElseThrow();
+        java.util.List<String> permisos;
+        if (!rol.isEsEditable()) {
+            permisos = java.util.List.of("*");
+        } else {
+            permisos = new java.util.ArrayList<>(
+                    permisoCacheService.permisosActivos(usuario.getTenantId(), usuario.getRolId()));
+        }
+        
         UsuarioResponse usuarioResponse = new UsuarioResponse(
-                usuario.getId(), usuario.getNombre(), usuario.getCorreo(), rolNombre, usuario.getTenantId());
+                usuario.getId(), usuario.getNombre(), usuario.getCorreo(), rol.getNombre(), usuario.getTenantId(), permisos);
         return new TokenPair(accessToken, emitido.rawToken(), usuarioResponse, usuario.isDebeCambiarPassword());
     }
 }

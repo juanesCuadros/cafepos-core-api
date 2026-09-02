@@ -9,7 +9,7 @@ services:
     ports:
       # 5434 en el host: 5432 lo ocupa un PostgreSQL nativo de Windows en
       # esta máquina, y 5433 ya lo usa otro contenedor (ipm_bi_db).
-      - "5434:5432"
+      - "5436:5432"
     volumes:
       - cafepos_pgdata:/var/lib/postgresql/data
     healthcheck:
