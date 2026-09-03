@@ -5,7 +5,7 @@ COPY mvnw pom.xml ./
 COPY .mvn .mvn
 RUN ./mvnw dependency:go-offline -q
 COPY src src
-# Sin -DskipTests a proposito: si un test falla, el build de Docker falla.
+ENV MAVEN_OPTS="-Xmx1024m -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
 RUN ./mvnw package -q
 
 # Stage 2: runtime

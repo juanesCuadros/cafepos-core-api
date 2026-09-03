@@ -32,9 +32,9 @@ jobs:
           # Default de la action es 10m — con --no-cache (ver abajo por que
           # se saco) esto ya se quedo corto una vez (25-ago-2026, build de
           # Compras cortado a mitad de camino). Con cache deberia sobrar de
-          # sobra, pero 20m da margen real sin dejar un timeout tan largo
-          # que tape un deploy realmente colgado.
-          command_timeout: 20m
+          # Default de la action es 10m. Se asigna 40m para dar margen holgado
+          # durante descargas o compilaciones completas sin saturar la conexion.
+          command_timeout: 40m
           script: |
             set -e
             cd ~/resttodash/backend
@@ -42,15 +42,11 @@ jobs:
             git checkout main
             git pull
             cd ~/resttodash
-            # Sin --no-cache a proposito: la descarga de dependencias
-            # (./mvnw dependency:go-offline, ~4-5 min por servicio sin
-            # cache) es identica entre deploys mientras no cambien
-            # mvnw/pom.xml — Docker la reusa sola. --no-cache forzaba
-            # recompilar TODO desde cero en cada deploy, que fue justo lo
-            # que hizo que un deploy se quedara sin tiempo (25-ago-2026, ver
-            # INTEGRACION.md 2.14). Docker sigue invalidando la cache el
-            # solo cuando el codigo fuente realmente cambia (COPY src src).
-            docker compose build core-api admin-api
+            # Builds SECUENCIALES (uno por uno): compilar core-api y admin-api
+            # al mismo tiempo satura la memoria y CPU del VPS haciendo que el
+            # proceso entre en swap thrashing y caiga en timeout.
+            docker compose build core-api
+            docker compose build admin-api
             docker compose up -d core-api admin-api
             # core-api/admin-api quedan con IP nueva en la red de Docker al
             # recrearse — nginx no siempre la recoge solo (visto en vivo:

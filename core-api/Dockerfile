@@ -5,16 +5,7 @@ COPY mvnw pom.xml ./
 COPY .mvn .mvn
 RUN ./mvnw dependency:go-offline -q
 COPY src src
-# Sin -DskipTests a proposito: incluye ModularityTests, gate obligatorio
-# antes de construir la imagen. Si un test falla, el build de Docker falla.
-#
-# Sin exclusion manual de tests: la convencion de sufijo (ver CLAUDE.md)
-# ya resuelve esto sola. *Test = unitario, corre aca via surefire (mvn
-# package). *IT = integracion real (necesita Postgres real, inalcanzable
-# en este build aislado sin red hacia ningun servicio) — failsafe solo las
-# corre en "mvn verify", nunca en "package", asi que ni siquiera se
-# intentan aca. Sigue corriendo normal en una maquina de desarrollo con
-# Postgres de docker-compose.yml levantado (mvn verify).
+ENV MAVEN_OPTS="-Xmx1024m -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
 RUN ./mvnw package -q
 
 # Stage 2: runtime
