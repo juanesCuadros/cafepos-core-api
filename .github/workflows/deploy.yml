@@ -91,3 +91,6 @@ jobs:
 
             # Recargar nginx para refrescar resolucion de IPs en la red interna de Docker
             docker exec resttodash-nginx nginx -s reload
+
+            # Cerrar sesion de GHCR en el VPS para no dejar tokens guardados en disco
+            docker logout ghcr.io || true

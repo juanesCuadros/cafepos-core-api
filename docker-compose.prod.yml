@@ -22,7 +22,7 @@ services:
     container_name: cafepos-core-api
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - productos_uploads:/app/uploads
     depends_on:
@@ -49,7 +49,7 @@ services:
     container_name: cafepos-admin-api
     restart: unless-stopped
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     depends_on:
       postgres:
         condition: service_healthy
