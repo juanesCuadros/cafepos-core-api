@@ -17,6 +17,7 @@ services:
       retries: 10
 
   core-api:
+    image: ghcr.io/juanescuadros/cafepos-core-api:latest
     build: ./core-api
     container_name: cafepos-core-api
     restart: unless-stopped
@@ -28,6 +29,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m -XX:+UseG1GC"
       SPRING_PROFILES_ACTIVE: ${CORE_API_SPRING_PROFILES_ACTIVE}
       # Conexion de runtime — rol app_tenant, sin BYPASSRLS
       SPRING_DATASOURCE_URL: ${CORE_API_DATASOURCE_URL}
@@ -42,6 +44,7 @@ services:
       CAFEPOS_FACTUS_ENCRYPTION_KEY: ${CAFEPOS_FACTUS_ENCRYPTION_KEY}
 
   admin-api:
+    image: ghcr.io/juanescuadros/cafepos-admin-api:latest
     build: ./admin-api
     container_name: cafepos-admin-api
     restart: unless-stopped
@@ -51,6 +54,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx256m -XX:+UseSerialGC"
       SPRING_PROFILES_ACTIVE: ${ADMIN_API_SPRING_PROFILES_ACTIVE}
       # Conexion de runtime — rol app_platform, BYPASSRLS
       SPRING_DATASOURCE_URL: ${ADMIN_API_DATASOURCE_URL}

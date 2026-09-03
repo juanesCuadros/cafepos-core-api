@@ -6,51 +6,88 @@ on:
       - main
   workflow_dispatch:
 
-# Si llegan 2 pushes seguidos, el segundo deploy ESPERA a que termine el
-# primero en vez de correr los dos al mismo tiempo — dos builds de Java sin
-# cache a la vez saturaron el VPS (memoria al 108%, hasta la consola del
-# droplet dejo de responder) el 24-ago-2026. cancel-in-progress: false a
-# proposito: si cancelara el que esta corriendo, podria cortar un
-# `docker compose build` a la mitad, mejor dejarlo terminar y encolar el
-# siguiente.
 concurrency:
   group: deploy-backend
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
+  build-and-push:
+    name: Build & Push (${{ matrix.service.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - name: core-api
+            context: ./core-api
+            tag: ghcr.io/juanescuadros/cafepos-core-api:latest
+          - name: admin-api
+            context: ./admin-api
+            tag: ghcr.io/juanescuadros/cafepos-admin-api:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.service.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.context }}/Dockerfile
+          push: true
+          tags: ${{ matrix.service.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
     name: Deploy to VPS
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: SSH deploy
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          # Default de la action es 10m — con --no-cache (ver abajo por que
-          # se saco) esto ya se quedo corto una vez (25-ago-2026, build de
-          # Compras cortado a mitad de camino). Con cache deberia sobrar de
-          # Default de la action es 10m. Se asigna 40m para dar margen holgado
-          # durante descargas o compilaciones completas sin saturar la conexion.
-          command_timeout: 40m
+          timeout: 60s
+          command_timeout: 10m
           script: |
             set -e
+            # Autenticar VPS contra GitHub Container Registry usando el token del deploy
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+            # Actualizar repo local en VPS
             cd ~/resttodash/backend
-            git fetch
+            git fetch origin main
             git checkout main
-            git pull
+            git pull origin main
+
             cd ~/resttodash
-            # Builds SECUENCIALES (uno por uno): compilar core-api y admin-api
-            # al mismo tiempo satura la memoria y CPU del VPS haciendo que el
-            # proceso entre en swap thrashing y caiga en timeout.
-            docker compose build core-api
-            docker compose build admin-api
-            docker compose up -d core-api admin-api
-            # core-api/admin-api quedan con IP nueva en la red de Docker al
-            # recrearse — nginx no siempre la recoge solo (visto en vivo:
-            # 502 sostenido con el contenedor nuevo ya sano, hasta hacer
-            # este reload a mano). El resolver con TTL corto no alcanza a
-            # cubrir esto de forma confiable, asi que se fuerza siempre.
+            # Descarga de imagenes construidas en GitHub Actions (0% CPU y 0% RAM de compilacion en VPS)
+            docker pull ghcr.io/juanescuadros/cafepos-core-api:latest
+            docker pull ghcr.io/juanescuadros/cafepos-admin-api:latest
+
+            # Tags de compatibilidad por si compose usa nombres locales
+            docker tag ghcr.io/juanescuadros/cafepos-core-api:latest cafepos-core-api:latest || true
+            docker tag ghcr.io/juanescuadros/cafepos-admin-api:latest cafepos-admin-api:latest || true
+
+            # Pull de compose y levantamiento sin compilar en el VPS
+            docker compose pull core-api admin-api || true
+            docker compose up -d --no-build core-api admin-api
+
+            # Recargar nginx para refrescar resolucion de IPs en la red interna de Docker
             docker exec resttodash-nginx nginx -s reload
