@@ -70,11 +70,11 @@ jobs:
             # Autenticar VPS contra GitHub Container Registry usando el token del deploy
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-            # Actualizar repo local en VPS
+            # Actualizar repo local en VPS descartando cualquier cambio local espurio
             cd ~/resttodash/backend
             git fetch origin main
-            git checkout main
-            git pull origin main
+            git checkout -f main
+            git reset --hard origin/main
 
             cd ~/resttodash
             # Descarga de imagenes construidas en GitHub Actions (0% CPU y 0% RAM de compilacion en VPS)
