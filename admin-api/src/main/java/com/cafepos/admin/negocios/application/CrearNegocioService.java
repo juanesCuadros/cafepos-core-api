@@ -133,7 +133,11 @@ public class CrearNegocioService {
                 new Tenant(superadminId, planId, slug, estadoInicial, fechaProximaFacturacion));
         Integer tenantId = tenant.getId();
 
-        // b. restaurantes (Eliminado: ahora se provisiona automáticamente por un trigger en DB tras crear el tenant)
+        // b. restaurantes: el trigger en DB auto-provisiona la fila con slug; actualizamos con el nombre real
+        restauranteRepository.findByTenantId(tenantId).ifPresent(r -> {
+            r.actualizarNombre(nombreNegocio);
+            restauranteRepository.save(r);
+        });
 
         List<Rol> roles = rolRepository.findAll();
         Map<String, Integer> rolIdPorNombre = roles.stream()

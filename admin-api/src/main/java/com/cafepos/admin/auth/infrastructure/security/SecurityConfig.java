@@ -50,7 +50,7 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain apiFilterChain(HttpSecurity http, JwtService jwtService) throws Exception {
         http.authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/admin/auth/**").permitAll()
+                        .requestMatchers("/admin/auth/bootstrap", "/admin/auth/login", "/admin/auth/refresh").permitAll()
                         .anyRequest().authenticated())
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

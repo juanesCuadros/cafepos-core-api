@@ -10,7 +10,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** Mapea restaurantes. Solo nombre_negocio — el resto queda NULL al crear el negocio. */
+/** Mapea restaurantes de capa tenant. */
 @Entity
 @Table(name = "restaurantes")
 @Getter
@@ -27,8 +27,43 @@ public class Restaurante {
     @Column(name = "nombre_negocio", nullable = false)
     private String nombreNegocio;
 
+    @Column(name = "nit")
+    private String nit;
+
+    @Column(name = "direccion")
+    private String direccion;
+
+    @Column(name = "departamento")
+    private String departamento;
+
+    @Column(name = "ciudad")
+    private String ciudad;
+
+    @Column(name = "telefono")
+    private String telefono;
+
+    @Column(name = "correo")
+    private String correo;
+
     public Restaurante(Integer tenantId, String nombreNegocio) {
         this.tenantId = tenantId;
         this.nombreNegocio = nombreNegocio;
+    }
+
+    public void actualizarNombre(String nombreNegocio) {
+        this.nombreNegocio = nombreNegocio;
+    }
+
+    public void actualizarInfo(String nombreNegocio, String nit, String direccion,
+                               String departamento, String ciudad, String telefono, String correo) {
+        if (nombreNegocio != null && !nombreNegocio.isBlank()) {
+            this.nombreNegocio = nombreNegocio;
+        }
+        this.nit = nit;
+        this.direccion = direccion;
+        this.departamento = departamento;
+        this.ciudad = ciudad;
+        this.telefono = telefono;
+        this.correo = correo;
     }
 }
