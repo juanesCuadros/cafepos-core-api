@@ -3,6 +3,7 @@ FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /app
 COPY mvnw pom.xml ./
 COPY .mvn .mvn
+RUN chmod +x mvnw && sed -i 's/\r$//' mvnw
 RUN ./mvnw dependency:go-offline -q
 COPY src src
 ENV MAVEN_OPTS="-Xmx1024m -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
