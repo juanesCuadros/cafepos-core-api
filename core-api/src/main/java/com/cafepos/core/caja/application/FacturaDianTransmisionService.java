@@ -174,6 +174,15 @@ public class FacturaDianTransmisionService {
             notificacionesWebSocketService.facturaActualizada(aActualizar.getTenantId(), facturaDianId);
         } else {
             log.warn("Factus no acepto la transmision de la factura {}: {}", facturaDianId, resultado.mensajeError());
+            // Persistir el motivo real, no solo dejarlo en el log del servidor
+            // — quien opera la caja necesita poder ver POR QUE fallo (ver
+            // INTEGRACION.md hallazgo 3.48). La factura queda 'pendiente',
+            // asi que se puede reintentar el envio desde Caja -> Facturacion.
+            FacturaDian conFallo = facturaDianRepository.buscarPorId(facturaDianId)
+                    .orElseThrow(FacturaNoEncontradaException::new);
+            conFallo.registrarFalloTransmision(resultado.mensajeError());
+            facturaDianRepository.guardar(conFallo);
+            notificacionesWebSocketService.facturaActualizada(conFallo.getTenantId(), facturaDianId);
         }
         return resultado;
     }

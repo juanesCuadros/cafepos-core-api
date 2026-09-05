@@ -43,6 +43,8 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
     private static final String BASE_URL_SANDBOX = "https://api-sandbox.factus.com.co";
     private static final String BASE_URL_PRODUCCION = "https://api.factus.com.co";
     private static final int TIMEOUT_MILLIS = 15_000;
+    /** Tope del cuerpo de error que se loguea — suficiente para el detalle de validacion de Factus sin inundar el log. */
+    private static final int MAX_DETALLE_ERROR = 1_000;
 
     private static final String DOCUMENT_FACTURA = "01";
     private static final String OPERATION_TYPE_ESTANDAR = "10";
@@ -87,12 +89,32 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
                     .body(JsonNode.class);
             return aResultado(respuesta);
         } catch (RestClientException ex) {
-            log.warn("Fallo la llamada a Factus bills/validate ({}): {}", baseUrl, mensajeSeguro(ex));
-            return fallo("Fallo la llamada a Factus bills/validate");
+            // A DIFERENCIA del catch de autenticacion, aca SI se loguea el
+            // cuerpo de la respuesta: un 422 de bills/validate trae el detalle
+            // de que campo rechazo Factus, y sin eso no hay forma de depurar
+            // la integracion (confirmado en vivo 02-sep-2026: la primera
+            // factura real fallo con 422 y el log solo decia el status, no el
+            // motivo). El cuerpo de ESTE endpoint son errores de validacion de
+            // la factura, nunca credenciales — esas solo viajan a /oauth/token.
+            String detalle = detalleValidacion(ex);
+            log.warn("Fallo la llamada a Factus bills/validate ({}): {}", baseUrl, detalle);
+            return fallo("Factus rechazo la factura: " + detalle);
         } catch (RuntimeException ex) {
             log.warn("Respuesta inesperada de Factus bills/validate: {}", ex.getMessage());
             return fallo("Respuesta inesperada de Factus");
         }
+    }
+
+    /** Status + cuerpo recortado — el detalle real de por que Factus rechazo la factura. */
+    private String detalleValidacion(RestClientException ex) {
+        if (!(ex instanceof RestClientResponseException rex)) {
+            return ex.getClass().getSimpleName();
+        }
+        String cuerpo = rex.getResponseBodyAsString();
+        if (cuerpo.length() > MAX_DETALLE_ERROR) {
+            cuerpo = cuerpo.substring(0, MAX_DETALLE_ERROR) + "...(truncado)";
+        }
+        return rex.getStatusCode() + " " + cuerpo;
     }
 
     private ResultadoTransmisionFactus aResultado(JsonNode respuesta) {

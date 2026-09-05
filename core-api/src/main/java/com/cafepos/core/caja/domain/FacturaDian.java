@@ -27,6 +27,9 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class FacturaDian {
 
+    /** Largo de la columna motivo_rechazo (VARCHAR(255), ver V1__schema_v4.sql) — se recorta antes de guardar. */
+    private static final int MAX_MOTIVO_RECHAZO = 255;
+
     public static final String ESTADO_PENDIENTE = "pendiente";
     public static final String ESTADO_ACEPTADA = "aceptada";
     public static final String ESTADO_RECHAZADA = "rechazada";
@@ -82,5 +85,20 @@ public class FacturaDian {
         this.cufe = cufe;
         this.qrCode = qrCode;
         this.estadoDian = validado ? ESTADO_ACEPTADA : ESTADO_RECHAZADA;
+        this.motivoRechazo = null;
+    }
+
+    /**
+     * La transmision no llego a completarse (Factus rechazo la factura, fallo
+     * la autenticacion, o hubo un problema de red). Guarda el motivo en la
+     * columna motivo_rechazo, que existia en el schema desde V1 pero NUNCA se
+     * escribia — el detalle solo quedaba en el log del servidor, invisible
+     * para quien opera la caja (ver INTEGRACION.md hallazgo 3.48). El estado
+     * NO cambia: queda 'pendiente' para que se pueda reintentar el envio.
+     */
+    public void registrarFalloTransmision(String motivo) {
+        this.motivoRechazo = motivo != null && motivo.length() > MAX_MOTIVO_RECHAZO
+                ? motivo.substring(0, MAX_MOTIVO_RECHAZO)
+                : motivo;
     }
 }
