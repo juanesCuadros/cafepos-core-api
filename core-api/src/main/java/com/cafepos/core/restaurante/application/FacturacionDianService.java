@@ -5,6 +5,7 @@ import com.cafepos.core.restaurante.domain.FacturacionDianEstado;
 import com.cafepos.core.restaurante.domain.FacturacionDianRepository;
 import com.cafepos.core.restaurante.domain.FacturacionDianResolucion;
 import com.cafepos.core.restaurante.domain.NumeroFacturaReservado;
+import com.cafepos.core.restaurante.domain.ResolucionVigenteResumen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -44,7 +45,7 @@ public class FacturacionDianService {
 
     @Transactional(readOnly = true)
     public FacturacionDianEstado obtener() {
-        Optional<FacturacionDianResolucion> resolucion = facturacionDianRepository.buscarVigente();
+        Optional<ResolucionVigenteResumen> resolucion = facturacionDianRepository.buscarVigenteResumen();
         if (resolucion.isEmpty()) {
             return FacturacionDianEstado.noConfigurada();
         }
@@ -64,24 +65,27 @@ public class FacturacionDianService {
      *
      * NO valida rango_inicio/rango_fin/estado='agotada' todavia — fuera de
      * alcance de este prompt (simplificacion aceptada, documentada).
+     *
+     * Nunca carga la entidad completa: incrementarYReservarNumero() es un
+     * UPDATE atomico de una sola sentencia que ni siquiera lee las 4
+     * columnas Factus cifradas — un ciphertext corrupto en cualquiera de
+     * ellas no puede tumbar esta reserva (y por extension, la venta
+     * completa que corre en la misma transaccion). Ver Javadoc de
+     * FacturacionDianRepository.incrementarYReservarNumero.
      */
     @Transactional
     public Optional<NumeroFacturaReservado> reservarSiguienteNumeroFactura() {
-        Optional<FacturacionDianResolucion> resolucion = facturacionDianRepository.buscarVigente();
-        if (resolucion.isEmpty()) {
+        Optional<NumeroFacturaReservado> reservado = facturacionDianRepository.incrementarYReservarNumero();
+        if (reservado.isEmpty()) {
             return Optional.empty();
         }
-        FacturacionDianResolucion r = resolucion.get();
-        r.incrementarNumeracion();
-        r = facturacionDianRepository.guardar(r);
-
-        String prefijo = r.getPrefijo();
-        if (prefijo == null || prefijo.isBlank()) {
+        NumeroFacturaReservado r = reservado.get();
+        if (r.prefijo() == null || r.prefijo().isBlank()) {
             log.warn("facturacion_dian_resolucion id={} sin prefijo configurado - usando default '{}'",
-                    r.getId(), PREFIJO_DEFAULT);
-            prefijo = PREFIJO_DEFAULT;
+                    r.resolucionId(), PREFIJO_DEFAULT);
+            r = new NumeroFacturaReservado(r.resolucionId(), PREFIJO_DEFAULT, r.numero());
         }
-        return Optional.of(new NumeroFacturaReservado(r.getId(), prefijo, r.getNumeracionActual().intValue()));
+        return Optional.of(r);
     }
 
     /**
@@ -92,12 +96,12 @@ public class FacturacionDianService {
      * credenciales Factus completas (resolucion dada de alta manualmente en
      * base sin configurar Factus todavia, ver Javadoc de FacturacionDianResolucion).
      * Sin parametro tenantId a proposito — RLS + TenantContext ya escopan
-     * buscarVigente() al tenant actual, mismo criterio que el resto de
-     * metodos de este service.
+     * buscarVigenteConCredenciales() al tenant actual, mismo criterio que
+     * el resto de metodos de este service.
      */
     @Transactional(readOnly = true)
     public Optional<CredencialesFactus> credencialesFactusPara() {
-        return facturacionDianRepository.buscarVigente()
+        return facturacionDianRepository.buscarVigenteConCredenciales()
                 .map(FacturacionDianResolucion::credencialesFactus)
                 .filter(c -> c.clientId() != null && c.clientSecret() != null && c.username() != null
                         && c.password() != null);

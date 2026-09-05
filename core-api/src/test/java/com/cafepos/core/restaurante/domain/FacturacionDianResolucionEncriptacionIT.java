@@ -50,7 +50,7 @@ class FacturacionDianResolucionEncriptacionIT {
     void guardarYReleerViaRepositorio_devuelveElValorOriginalSinCifrar() {
         TenantContext.setCurrentTenantId(TENANT_CAFETERIA_DEMO);
 
-        FacturacionDianResolucion resolucion = facturacionDianRepository.buscarVigente().orElseThrow();
+        FacturacionDianResolucion resolucion = facturacionDianRepository.buscarVigenteConCredenciales().orElseThrow();
         ReflectionTestUtils.setField(resolucion, "clientIdFactus", CLIENT_ID_PRUEBA);
         ReflectionTestUtils.setField(resolucion, "clientSecretFactus", CLIENT_SECRET_PRUEBA);
         Integer idFila = facturacionDianRepository.guardar(resolucion).getId();
@@ -58,7 +58,7 @@ class FacturacionDianResolucionEncriptacionIT {
         // Cada llamada al repositorio abre su propia transaccion/EntityManager
         // (open-in-view: false, sin @Transactional en el test) — esta relectura
         // pega contra la base de nuevo, no devuelve el mismo objeto en memoria.
-        FacturacionDianResolucion releida = facturacionDianRepository.buscarVigente().orElseThrow();
+        FacturacionDianResolucion releida = facturacionDianRepository.buscarVigenteConCredenciales().orElseThrow();
 
         assertThat(releida.getId()).isEqualTo(idFila);
         assertThat(ReflectionTestUtils.getField(releida, "clientIdFactus")).isEqualTo(CLIENT_ID_PRUEBA);

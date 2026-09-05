@@ -26,9 +26,8 @@ public record FacturacionDianEstado(
         return new FacturacionDianEstado(false, "inactiva", null, null, null, null, null, null, null, null);
     }
 
-    public static FacturacionDianEstado de(FacturacionDianResolucion r, String estadoConexion) {
-        return new FacturacionDianEstado(true, estadoConexion, r.getPrefijo(), r.getRangoInicio(), r.getRangoFin(),
-                r.getNumeracionActual(), r.getFechaExpedicion(), r.getFechaVencimiento(), r.getAmbiente(),
-                r.getEstado());
+    public static FacturacionDianEstado de(ResolucionVigenteResumen r, String estadoConexion) {
+        return new FacturacionDianEstado(true, estadoConexion, r.prefijo(), r.rangoInicio(), r.rangoFin(),
+                r.numeracionActual(), r.fechaExpedicion(), r.fechaVencimiento(), r.ambiente(), r.estado());
     }
 }
