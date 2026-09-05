@@ -31,6 +31,7 @@ import com.cafepos.core.restaurante.domain.NumeroFacturaReservado;
 import com.cafepos.core.shared.codigo.GeneradorCodigo;
 import com.cafepos.core.shared.impuestos.ResolverTasaImpuesto;
 import com.cafepos.core.shared.tenant.TenantContext;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -203,7 +204,24 @@ public class VentaService {
         Integer tenantId = TenantContext.getCurrentTenantId();
         Venta venta = new Venta(tenantId, pedidoId, jornada.getId(), clienteId, cajeroId, subtotal, descuentoTotal,
                 impuestos, propinaSegura, total);
-        venta = ventaRepository.guardar(venta);
+        // El chequeo de pedido.estaCerrado() de arriba es "check-then-act"
+        // sin bloqueo — dos cobros casi simultaneos del mismo pedido pueden
+        // pasarlo los dos antes de que ninguno confirme su venta (mismo
+        // problema real ya resuelto para mesas y turno, ver
+        // V29__pedido_mesa_activo_unico.sql / V31__turno_activo_unico.sql).
+        // La garantia real es el indice unico de V32__venta_pedido_unico.sql
+        // sobre venta.pedido_id — este chequeo previo sigue sirviendo para
+        // el caso normal (dar un error legible sin ni siquiera intentar el
+        // INSERT), pero si igual se pierde la carrera, el INSERT choca
+        // contra el indice y Postgres tira DataIntegrityViolationException
+        // — se traduce al mismo error legible (reusando PedidoYaCerradoException,
+        // mismo significado exacto: "este pedido ya fue cobrado") en vez de
+        // dejarlo escapar como 500 generico.
+        try {
+            venta = ventaRepository.guardar(venta);
+        } catch (DataIntegrityViolationException ex) {
+            throw new PedidoYaCerradoException();
+        }
         venta.asignarCodigo(GeneradorCodigo.generar(PREFIJO_CODIGO_VENTA, venta.getId()));
         venta = ventaRepository.guardar(venta);
 
