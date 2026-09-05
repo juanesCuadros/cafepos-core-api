@@ -151,7 +151,17 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(allowedOriginPatterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Tenant-Slug"));
+        // X-Pin-Token faltaba aca — bloqueaba en el navegador CUALQUIER accion
+        // protegida por PIN (anular venta, eliminar item de pedido,
+        // devoluciones, nota credito, egresos de caja, ajustes de
+        // inventario...) en cuanto frontend y backend viven en origenes
+        // distintos, que es la arquitectura real de produccion
+        // (cafeteria-demo.resttodash.app vs api.resttodash.app) — el
+        // preflight rechazaba el header antes de que la peticion real
+        // saliera del navegador, sin ningun error visible mas alla de un
+        // "Failed to fetch" generico. Confirmado real probando en vivo
+        // contra produccion, no una suposicion.
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Tenant-Slug", "X-Pin-Token"));
         config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
