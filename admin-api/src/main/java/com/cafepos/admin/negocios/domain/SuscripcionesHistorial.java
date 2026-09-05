@@ -10,7 +10,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** Mapea suscripciones_historial. estadoAnterior explicito siempre — null en el alta, el estado real en cambios posteriores. */
+import java.time.OffsetDateTime;
+
+/** Mapea suscripciones_historial (capa plataforma). */
 @Entity
 @Table(name = "suscripciones_historial")
 @Getter
@@ -30,17 +32,38 @@ public class SuscripcionesHistorial {
     @Column(name = "estado_nuevo", nullable = false)
     private String estadoNuevo;
 
+    @Column(name = "plan_anterior_id")
+    private Integer planAnteriorId;
+
+    @Column(name = "plan_nuevo_id")
+    private Integer planNuevoId;
+
     @Column(name = "superadmin_id")
     private Integer superadminId;
 
     @Column
     private String motivo;
 
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
     public SuscripcionesHistorial(Integer tenantId, String estadoAnterior, String estadoNuevo,
                                    Integer superadminId, String motivo) {
         this.tenantId = tenantId;
         this.estadoAnterior = estadoAnterior;
         this.estadoNuevo = estadoNuevo;
+        this.superadminId = superadminId;
+        this.motivo = motivo;
+    }
+
+    public SuscripcionesHistorial(Integer tenantId, String estadoAnterior, String estadoNuevo,
+                                   Integer planAnteriorId, Integer planNuevoId,
+                                   Integer superadminId, String motivo) {
+        this.tenantId = tenantId;
+        this.estadoAnterior = estadoAnterior;
+        this.estadoNuevo = estadoNuevo;
+        this.planAnteriorId = planAnteriorId;
+        this.planNuevoId = planNuevoId;
         this.superadminId = superadminId;
         this.motivo = motivo;
     }

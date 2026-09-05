@@ -7,6 +7,8 @@ public interface SuperadminRepository {
 
     long count();
 
+    Optional<Superadmin> findById(Integer id);
+
     Optional<Superadmin> findByCorreo(String correo);
 
     Superadmin save(Superadmin superadmin);

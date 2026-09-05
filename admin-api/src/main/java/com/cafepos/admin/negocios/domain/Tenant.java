@@ -11,12 +11,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 
 /**
  * Mapea tenants (capa plataforma, creada por core-api en V1__schema_v4.sql).
- * estado y fecha_proxima_facturacion se mapean y se setean explicitamente
- * al crear — no confiar en el DEFAULT de la columna (ver
- * CrearNegocioService: depende de planes.diasPrueba).
  */
 @Entity
 @Table(name = "tenants")
@@ -27,12 +25,13 @@ public class Tenant {
     public static final String ESTADO_PRUEBA = "prueba";
     public static final String ESTADO_ACTIVO = "activo";
     public static final String ESTADO_SUSPENDIDO = "suspendido";
+    public static final String ESTADO_CANCELADO = "cancelado";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "superadmin_aprobador_id", nullable = false)
+    @Column(name = "superadmin_aprobador_id")
     private Integer superadminAprobadorId;
 
     @Column(name = "plan_id", nullable = false)
@@ -43,6 +42,9 @@ public class Tenant {
 
     @Column(nullable = false)
     private String estado;
+
+    @Column(name = "fecha_registro", insertable = false, updatable = false)
+    private OffsetDateTime fechaRegistro;
 
     @Column(name = "fecha_proxima_facturacion")
     private LocalDate fechaProximaFacturacion;
@@ -58,5 +60,29 @@ public class Tenant {
 
     public void suspenderPorPruebaVencida() {
         this.estado = ESTADO_SUSPENDIDO;
+    }
+
+    public void suspender() {
+        this.estado = ESTADO_SUSPENDIDO;
+    }
+
+    public void reactivar(LocalDate proximaFacturacion) {
+        this.estado = ESTADO_ACTIVO;
+        this.fechaProximaFacturacion = proximaFacturacion;
+    }
+
+    public void cancelar() {
+        this.estado = ESTADO_CANCELADO;
+    }
+
+    public void extenderPrueba(LocalDate nuevaFecha) {
+        if (!ESTADO_PRUEBA.equals(this.estado)) {
+            throw new OperacionTenantInvalidaException("Solo se puede extender el período de prueba a negocios en estado 'prueba'");
+        }
+        this.fechaProximaFacturacion = nuevaFecha;
+    }
+
+    public void cambiarPlan(Integer nuevoPlanId) {
+        this.planId = nuevoPlanId;
     }
 }

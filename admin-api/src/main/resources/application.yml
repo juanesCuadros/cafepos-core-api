@@ -64,4 +64,4 @@ cafepos:
   tenant:
     # Dominio publico bajo el que se sirve cada negocio (POST /admin/negocios
     # arma la url de vuelta con este valor: https://{slug}.{base-domain}).
-    base-domain: resttodash.app
+    base-domain: ${CAFEPOS_TENANT_BASE_DOMAIN:resttodash.app}

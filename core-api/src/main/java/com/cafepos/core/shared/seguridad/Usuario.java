@@ -29,7 +29,8 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Usuario {
 
-    private static final String ESTADO_ACTIVO = "activo";
+    public static final String ESTADO_ACTIVO = "activo";
+    public static final String ESTADO_INACTIVO = "inactivo";
 
     /** RN-008: 5 intentos fallidos consecutivos bloquean el login por 15 minutos. */
     private static final int MAX_INTENTOS_FALLIDOS = 5;
@@ -191,5 +192,9 @@ public class Usuario {
         if (estado != null) {
             this.estado = estado;
         }
+    }
+
+    public void inactivar() {
+        this.estado = ESTADO_INACTIVO;
     }
 }

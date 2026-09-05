@@ -82,7 +82,8 @@ public class ConfiguracionUsuarioService {
     @Transactional
     public void eliminar(Integer id) {
         Usuario usuario = usuarioRepository.buscarPorId(id).orElseThrow(UsuarioNoEncontradoException::new);
-        usuarioRepository.eliminar(usuario);
+        usuario.inactivar();
+        usuarioRepository.guardar(usuario);
     }
 
     /** Regla de negocio (Modulo 11.1): solo Jefe (es_editable=false) o el rol Admin pueden tener PIN. */

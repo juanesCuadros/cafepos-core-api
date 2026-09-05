@@ -20,4 +20,9 @@ public class Rol {
 
     @Column(nullable = false, unique = true)
     private String nombre;
+
+    public Rol(Integer id, String nombre) {
+        this.id = id;
+        this.nombre = nombre;
+    }
 }
