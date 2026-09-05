@@ -36,6 +36,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
@@ -73,6 +75,7 @@ public class FacturaDianTransmisionService {
     private static final String TAX_CODE_IVA = "01";
     private static final String TAX_CODE_INC = "04";
     private static final String PAYMENT_METHOD_CODE_FALLBACK = "42";
+    private static final BigDecimal CIEN = new BigDecimal("100");
 
     private static final Logger log = LoggerFactory.getLogger(FacturaDianTransmisionService.class);
 
@@ -199,9 +202,67 @@ public class FacturaDianTransmisionService {
         List<ItemTransmisionFactus> items = pedido.items().stream()
                 .map(item -> mapearItem(item, incPorcentajeDefault))
                 .toList();
-        List<PagoTransmisionFactus> pagosFactus = pagos.stream().map(this::mapearPago).toList();
 
-        return new SolicitudTransmisionFactus(venta.getCodigo(), clienteFactus, items, pagosFactus);
+        // La propina voluntaria no es base gravable ante la DIAN - se cobra
+        // en el POS pero nunca se factura (ver DECISIONES YA TOMADAS). El
+        // monto real a facturar es venta.total SIN la propina; los pagos
+        // reportados a Factus se escalan proporcionalmente para que la suma
+        // cuadre exacto con eso (hallazgo real: Factus rechazaba con 422
+        // "La suma de todos los detalles de pago no es igual al total de la
+        // factura" en cuanto una venta tenia propina).
+        BigDecimal montoAFacturar = venta.getTotal().subtract(venta.getPropina());
+        List<PagoTransmisionFactus> pagosFactus = escalarPagosSinPropina(pagos, venta.getTotal(), montoAFacturar);
+        BigDecimal descuentoRatePercent = calcularDescuentoRatePercent(venta);
+
+        return new SolicitudTransmisionFactus(venta.getCodigo(), clienteFactus, items, pagosFactus,
+                descuentoRatePercent);
+    }
+
+    /**
+     * Mismo porcentaje de descuento prorateado uniforme que ya usa
+     * VentaService para calcular impuestos (ver su Javadoc) - antes esto no
+     * se transmitia a Factus en absoluto (discountRate quedaba fijo en 0),
+     * asi que cualquier venta con descuento real tambien terminaba con el
+     * mismo 422 de suma de pagos. subtotal=0 (venta sin items, caso raro) no
+     * divide por cero: no hay descuento que prorratear.
+     */
+    private BigDecimal calcularDescuentoRatePercent(Venta venta) {
+        if (venta.getSubtotal().signum() == 0) {
+            return BigDecimal.ZERO;
+        }
+        return venta.getDescuentoTotal().divide(venta.getSubtotal(), 8, RoundingMode.HALF_UP)
+                .multiply(CIEN);
+    }
+
+    /**
+     * Reparte montoAFacturar (total SIN propina) entre los metodos de pago
+     * reales, en la misma proporcion en que se pagaron - restar la propina
+     * de un solo metodo especifico favorecería/perjudicaría ese metodo en
+     * los reportes de Factus sin motivo. El ultimo pago absorbe el
+     * redondeo de centavos para que la suma final cuadre exacto (Factus
+     * valida la suma al centavo, ver hallazgo real del 422).
+     */
+    private List<PagoTransmisionFactus> escalarPagosSinPropina(List<VentaPago> pagos, BigDecimal totalConPropina,
+                                                                 BigDecimal montoAFacturar) {
+        if (pagos.isEmpty() || totalConPropina.signum() == 0) {
+            return List.of();
+        }
+        BigDecimal factor = montoAFacturar.divide(totalConPropina, 8, RoundingMode.HALF_UP);
+        List<PagoTransmisionFactus> resultado = new ArrayList<>(pagos.size());
+        BigDecimal acumulado = BigDecimal.ZERO;
+        for (int i = 0; i < pagos.size(); i++) {
+            VentaPago pago = pagos.get(i);
+            String codigoFactus = codigoFactusDe(pago);
+            BigDecimal monto;
+            if (i == pagos.size() - 1) {
+                monto = montoAFacturar.subtract(acumulado).setScale(2, RoundingMode.HALF_UP);
+            } else {
+                monto = pago.getMonto().multiply(factor).setScale(2, RoundingMode.HALF_UP);
+                acumulado = acumulado.add(monto);
+            }
+            resultado.add(new PagoTransmisionFactus(codigoFactus, monto));
+        }
+        return resultado;
     }
 
     /** CC -> persona natural (legal_organization_code "2", va en names). NIT -> juridica ("1", va en company). */
@@ -223,7 +284,7 @@ public class FacturaDianTransmisionService {
                 taxCode, tasa);
     }
 
-    private PagoTransmisionFactus mapearPago(VentaPago pago) {
+    private String codigoFactusDe(VentaPago pago) {
         MetodoPagoResumen metodoPago = metodoPagoService.buscarResumenPorId(pago.getMetodoPagoId()).orElse(null);
         String codigoFactus = metodoPago != null ? metodoPago.codigoFactus() : null;
         if (codigoFactus == null) {
@@ -231,6 +292,6 @@ public class FacturaDianTransmisionService {
                     pago.getMetodoPagoId(), PAYMENT_METHOD_CODE_FALLBACK);
             codigoFactus = PAYMENT_METHOD_CODE_FALLBACK;
         }
-        return new PagoTransmisionFactus(codigoFactus, pago.getMonto());
+        return codigoFactus;
     }
 }

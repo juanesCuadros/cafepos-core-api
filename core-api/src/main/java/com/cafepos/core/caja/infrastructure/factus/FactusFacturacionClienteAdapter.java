@@ -51,7 +51,6 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
     private static final String PAYMENT_FORM_CONTADO = "1";
     private static final String TRIBUTE_CODE_DEFAULT = "ZZ";
     private static final String CASH_ROUNDING_FIJO = "0.00";
-    private static final String DISCOUNT_RATE_FIJO = "0.00";
     private static final String UNIDAD_MEDIDA_UNICA = "94";
     private static final String CODIGO_ESTANDAR_ADOPCION = "999";
 
@@ -167,8 +166,9 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
         Customer customer = new Customer(c.identificationDocumentCode(), c.identification(),
                 c.legalOrganizationCode(), TRIBUTE_CODE_DEFAULT, c.names(), c.company(), c.email());
 
+        String discountRate = formatoMonto(solicitud.descuentoRatePercent());
         List<Item> items = solicitud.items().stream()
-                .map(i -> new Item(i.codeReference(), i.nombre(), formatoMonto(i.cantidad()), DISCOUNT_RATE_FIJO,
+                .map(i -> new Item(i.codeReference(), i.nombre(), formatoMonto(i.cantidad()), discountRate,
                         formatoMonto(i.precio()), UNIDAD_MEDIDA_UNICA, CODIGO_ESTANDAR_ADOPCION,
                         List.of(new Tax(i.taxCode(), formatoMonto(i.taxRate())))))
                 .toList();
