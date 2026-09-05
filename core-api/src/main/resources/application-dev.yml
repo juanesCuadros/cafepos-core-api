@@ -25,6 +25,15 @@ logging:
     org.hibernate.orm.jdbc.bind: TRACE
 
 cafepos:
+  cors:
+    # Nunca se probó antes el frontend local (Vite, localhost:5173) contra
+    # este backend en el mismo navegador — el CORS del yml base solo
+    # permitía https://*.resttodash.app, así que cualquier fetch desde
+    # localhost quedaba bloqueado (preflight OPTIONS con 403) sin ningún
+    # error claro del lado de la app. Puerto de Vite hardcodeado como
+    # ejemplo real, pero se permite cualquier puerto de localhost por si
+    # se corre con otro (--port).
+    allowed-origin-patterns: https://*.resttodash.app,http://localhost:*
   jwt:
     signing-key: dev-only-signing-key-nunca-usar-en-produccion-cambiar-por-variable-de-entorno
   factus:

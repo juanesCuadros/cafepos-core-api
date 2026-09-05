@@ -106,13 +106,14 @@ public class SecurityConfig {
                                               FilterErrorWriter filterErrorWriter,
                                               TenantRepository tenantRepository,
                                               @Value("${cafepos.tenant.base-domain}") String tenantBaseDomain,
-                                              JwtBlacklistService jwtBlacklistService) throws Exception {
+                                              JwtBlacklistService jwtBlacklistService,
+                                              CorsConfigurationSource corsConfigurationSource) throws Exception {
         JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtService, jwtBlacklistService, filterErrorWriter);
         TenantFilter tenantFilter = new TenantFilter(tenantBaseDomain, tenantRepository, filterErrorWriter);
         SuscripcionFilter suscripcionFilter = new SuscripcionFilter(tenantRepository, filterErrorWriter);
         DebeCambiarPasswordFilter debeCambiarPasswordFilter = new DebeCambiarPasswordFilter(filterErrorWriter);
 
-        http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .authorizeHttpRequests(auth -> auth
                         // /ws/** permitAll aca a proposito: SIGUE exigiendo un
                         // access token valido igual, pero lo valida
@@ -145,9 +146,10 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${cafepos.cors.allowed-origin-patterns}") List<String> allowedOriginPatterns) {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("https://*.resttodash.app"));
+        config.setAllowedOriginPatterns(allowedOriginPatterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Tenant-Slug"));
         config.setExposedHeaders(List.of("Authorization"));

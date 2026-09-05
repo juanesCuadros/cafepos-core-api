@@ -91,3 +91,9 @@ cafepos:
     base-domain: resttodash.app   # resuelve {slug}.cafepos.com → tenant_id
   uploads:
     base-path: /app/uploads
+  cors:
+    # Lista separada por comas de origin patterns permitidos (ver
+    # SecurityConfig.corsConfigurationSource) — SOLO el dominio real de
+    # producción por defecto. application-dev.yml agrega localhost acá,
+    # nunca al revés (nunca aflojar esto en el yml base).
+    allowed-origin-patterns: https://*.resttodash.app
