@@ -11,4 +11,8 @@ public interface FacturaDianTransmisorPort {
 
     ResultadoTransmisionFactus transmitir(SolicitudTransmisionFactus solicitud, String clientId, String clientSecret,
                                            String username, String password, String ambiente, Long numberingRangeId);
+
+    /** POST /v2/bills/{numeroFactura}/send-email — numeroFactura debe ser el numero REAL ya asignado por Factus, nunca el local. */
+    ResultadoEnvioCorreoFactus enviarCorreo(String numeroFactura, String email, String clientId, String clientSecret,
+                                             String username, String password, String ambiente);
 }

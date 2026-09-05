@@ -8,6 +8,7 @@ import com.cafepos.core.caja.domain.FacturaNoEncontradaException;
 import com.cafepos.core.caja.domain.NotaCredito;
 import com.cafepos.core.caja.domain.NotaCreditoRepository;
 import com.cafepos.core.caja.domain.NotaCreditoYaExisteException;
+import com.cafepos.core.caja.domain.ResultadoEnvioCorreoFactus;
 import com.cafepos.core.caja.domain.ResultadoTransmisionFactus;
 import com.cafepos.core.caja.domain.Venta;
 import com.cafepos.core.caja.domain.VentaNoEncontradaException;
@@ -16,8 +17,6 @@ import com.cafepos.core.clientes.application.ClienteService;
 import com.cafepos.core.clientes.domain.ClienteParaFactura;
 import com.cafepos.core.shared.auditoria.Auditable;
 import com.cafepos.core.shared.auditoria.AuditoriaContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,14 +28,12 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Facturacion (api_03_caja.md 3.6). reenviar-correo sigue siendo un stub a
- * proposito (sin proveedor de correo real, ver su Javadoc) — reintentar-envio
- * SI ejecuta la transmision real a Factus (ver FacturaDianTransmisionService).
+ * Facturacion (api_03_caja.md 3.6). reenviar-correo y reintentar-envio
+ * ejecutan ambos llamadas reales a Factus (ver FacturaDianTransmisionService)
+ * — reenviar-correo ya no es un stub.
  */
 @Service
 public class FacturacionService {
-
-    private static final Logger log = LoggerFactory.getLogger(FacturacionService.class);
 
     private static final Set<String> ESTADOS_REINTENTABLES = Set.of(FacturaDian.ESTADO_PENDIENTE,
             FacturaDian.ESTADO_RECHAZADA);
@@ -75,13 +72,16 @@ public class FacturacionService {
     }
 
     /**
-     * STUB: sin proveedor de correo real conectado (mismo criterio que la
-     * recuperacion de contrasena diferida) — solo deja un log INFO del
-     * intento, nunca envia nada de verdad. permiso real del catalogo es
-     * caja.facturacion:enviar_correo (el contrato de este prompt decia
-     * "reenviar_correo", que no existe en el catalogo).
+     * Reenvio REAL via Factus (POST /v2/bills/{numero}/send-email, ver
+     * FacturaDianTransmisionService.enviarCorreoReal — reemplaza el stub que
+     * solo logueaba, ver INTEGRACION.md hallazgo del mensaje que le mentia
+     * al usuario). Sin @Transactional a proposito: enviarCorreoReal hace una
+     * llamada de red a Factus (hasta 15s), no conviene mantener una conexion
+     * de base abierta durante eso (mismo criterio que reintentarEnvio).
+     * permiso real del catalogo es caja.facturacion:enviar_correo (el
+     * contrato de este prompt decia "reenviar_correo", que no existe en el
+     * catalogo).
      */
-    @Transactional(readOnly = true)
     public ReenviarCorreoResultado reenviarCorreo(Integer id) {
         FacturaDian factura = buscarFactura(id);
         Venta venta = buscarVenta(factura.getVentaId());
@@ -90,13 +90,13 @@ public class FacturacionService {
         String correo = cliente == null ? null : cliente.correo();
 
         if (correo == null || correo.isBlank()) {
-            log.info("[STUB reenviar-correo] Factura {} sin correo de cliente registrado, no se reenvia nada",
-                    factura.getNumeroFactura());
             return new ReenviarCorreoResultado("La factura no tiene un correo de cliente registrado para reenviar");
         }
 
-        log.info("[STUB reenviar-correo] Factura {} 'reenviada' a {} (sin proveedor de correo real conectado)",
-                factura.getNumeroFactura(), correo);
+        ResultadoEnvioCorreoFactus resultado = facturaDianTransmisionService.enviarCorreoReal(id, correo);
+        if (!resultado.exitoso()) {
+            return new ReenviarCorreoResultado(resultado.mensajeError());
+        }
         return new ReenviarCorreoResultado("Factura reenviada a " + correo);
     }
 

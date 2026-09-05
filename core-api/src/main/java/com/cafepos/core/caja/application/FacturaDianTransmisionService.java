@@ -9,6 +9,7 @@ import com.cafepos.core.caja.domain.FacturaNoEncontradaException;
 import com.cafepos.core.caja.domain.ItemTransmisionFactus;
 import com.cafepos.core.caja.domain.PagoTransmisionFactus;
 import com.cafepos.core.caja.domain.PedidoNoEncontradoException;
+import com.cafepos.core.caja.domain.ResultadoEnvioCorreoFactus;
 import com.cafepos.core.caja.domain.ResultadoTransmisionFactus;
 import com.cafepos.core.caja.domain.SolicitudTransmisionFactus;
 import com.cafepos.core.caja.domain.Venta;
@@ -37,7 +38,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
@@ -190,6 +190,44 @@ public class FacturaDianTransmisionService {
         return resultado;
     }
 
+    /**
+     * Reenvio REAL del correo con la factura ya validada por la DIAN (ver
+     * FacturacionService.reenviarCorreo, unico caller — reemplaza el stub
+     * que solo logueaba). Solo tiene sentido si la factura ya fue 'aceptada':
+     * Factus necesita el numero REAL que el asigno, y una factura 'pendiente'
+     * o 'rechazada' todavia tiene el numero LOCAL (ver FacturaDian.numeroFactura).
+     * Igual que transmitir(): nunca propaga excepciones, y sin @Transactional
+     * a proposito (ver Javadoc de la clase - evita mantener una conexion
+     * abierta durante la llamada de red a Factus).
+     */
+    public ResultadoEnvioCorreoFactus enviarCorreoReal(Integer facturaDianId, String email) {
+        try {
+            return intentarEnvioCorreo(facturaDianId, email);
+        } catch (RuntimeException ex) {
+            log.warn("No se pudo reenviar el correo de la factura {} - {}", facturaDianId, ex.getMessage());
+            return new ResultadoEnvioCorreoFactus(false, "Error interno intentando reenviar el correo");
+        }
+    }
+
+    private ResultadoEnvioCorreoFactus intentarEnvioCorreo(Integer facturaDianId, String email) {
+        FacturaDian factura = facturaDianRepository.buscarPorId(facturaDianId)
+                .orElseThrow(FacturaNoEncontradaException::new);
+        if (!FacturaDian.ESTADO_ACEPTADA.equals(factura.getEstadoDian())) {
+            return new ResultadoEnvioCorreoFactus(false,
+                    "La factura todavia no fue aceptada por la DIAN, no se puede reenviar el correo");
+        }
+
+        Optional<CredencialesFactus> credencialesOpt = facturacionDianService.credencialesFactusPara();
+        if (credencialesOpt.isEmpty()) {
+            return new ResultadoEnvioCorreoFactus(false, "Sin credenciales Factus configuradas");
+        }
+        CredencialesFactus credenciales = credencialesOpt.get();
+
+        return transmisorPort.enviarCorreo(factura.getNumeroFactura(), email, credenciales.clientId(),
+                credenciales.clientSecret(), credenciales.username(), credenciales.password(),
+                credenciales.ambiente());
+    }
+
     private SolicitudTransmisionFactus construirSolicitud(Venta venta) {
         PedidoParaVenta pedido = pedidoService.buscarParaVenta(venta.getPedidoId())
                 .orElseThrow(PedidoNoEncontradoException::new);
@@ -203,28 +241,30 @@ public class FacturaDianTransmisionService {
                 .map(item -> mapearItem(item, incPorcentajeDefault))
                 .toList();
 
-        // La propina voluntaria no es base gravable ante la DIAN - se cobra
-        // en el POS pero nunca se factura (ver DECISIONES YA TOMADAS). El
-        // monto real a facturar es venta.total SIN la propina; los pagos
-        // reportados a Factus se escalan proporcionalmente para que la suma
-        // cuadre exacto con eso (hallazgo real: Factus rechazaba con 422
-        // "La suma de todos los detalles de pago no es igual al total de la
-        // factura" en cuanto una venta tenia propina).
-        BigDecimal montoAFacturar = venta.getTotal().subtract(venta.getPropina());
-        List<PagoTransmisionFactus> pagosFactus = escalarPagosSinPropina(pagos, venta.getTotal(), montoAFacturar);
+        // Propina: Factus SI la contempla, como recargo (allowance_charges,
+        // concept_type "03" = "Recargo condicionado", is_surcharge=true) que
+        // se suma al total de la factura - ver FacturaDianTransmisorPort y
+        // FactusFacturacionClienteAdapter.construirAllowanceCharges. La base
+        // sobre la que se calcula (campo base_amount de Factus) es el
+        // subtotal neto de descuento, mismo criterio que usa el POS.
+        List<PagoTransmisionFactus> pagosFactus = pagos.stream()
+                .map(p -> new PagoTransmisionFactus(codigoFactusDe(p), p.getMonto()))
+                .toList();
         BigDecimal descuentoRatePercent = calcularDescuentoRatePercent(venta);
+        BigDecimal baseImponiblePropina = venta.getSubtotal().subtract(venta.getDescuentoTotal());
 
         return new SolicitudTransmisionFactus(venta.getCodigo(), clienteFactus, items, pagosFactus,
-                descuentoRatePercent);
+                descuentoRatePercent, venta.getPropina(), baseImponiblePropina);
     }
 
     /**
      * Mismo porcentaje de descuento prorateado uniforme que ya usa
      * VentaService para calcular impuestos (ver su Javadoc) - antes esto no
      * se transmitia a Factus en absoluto (discountRate quedaba fijo en 0),
-     * asi que cualquier venta con descuento real tambien terminaba con el
-     * mismo 422 de suma de pagos. subtotal=0 (venta sin items, caso raro) no
-     * divide por cero: no hay descuento que prorratear.
+     * asi que cualquier venta con descuento real terminaba con un 422 de
+     * suma de pagos (Factus calcula el total de items sin aplicar ningun
+     * descuento). subtotal=0 (venta sin items, caso raro) no divide por
+     * cero: no hay descuento que prorratear.
      */
     private BigDecimal calcularDescuentoRatePercent(Venta venta) {
         if (venta.getSubtotal().signum() == 0) {
@@ -232,37 +272,6 @@ public class FacturaDianTransmisionService {
         }
         return venta.getDescuentoTotal().divide(venta.getSubtotal(), 8, RoundingMode.HALF_UP)
                 .multiply(CIEN);
-    }
-
-    /**
-     * Reparte montoAFacturar (total SIN propina) entre los metodos de pago
-     * reales, en la misma proporcion en que se pagaron - restar la propina
-     * de un solo metodo especifico favorecería/perjudicaría ese metodo en
-     * los reportes de Factus sin motivo. El ultimo pago absorbe el
-     * redondeo de centavos para que la suma final cuadre exacto (Factus
-     * valida la suma al centavo, ver hallazgo real del 422).
-     */
-    private List<PagoTransmisionFactus> escalarPagosSinPropina(List<VentaPago> pagos, BigDecimal totalConPropina,
-                                                                 BigDecimal montoAFacturar) {
-        if (pagos.isEmpty() || totalConPropina.signum() == 0) {
-            return List.of();
-        }
-        BigDecimal factor = montoAFacturar.divide(totalConPropina, 8, RoundingMode.HALF_UP);
-        List<PagoTransmisionFactus> resultado = new ArrayList<>(pagos.size());
-        BigDecimal acumulado = BigDecimal.ZERO;
-        for (int i = 0; i < pagos.size(); i++) {
-            VentaPago pago = pagos.get(i);
-            String codigoFactus = codigoFactusDe(pago);
-            BigDecimal monto;
-            if (i == pagos.size() - 1) {
-                monto = montoAFacturar.subtract(acumulado).setScale(2, RoundingMode.HALF_UP);
-            } else {
-                monto = pago.getMonto().multiply(factor).setScale(2, RoundingMode.HALF_UP);
-                acumulado = acumulado.add(monto);
-            }
-            resultado.add(new PagoTransmisionFactus(codigoFactus, monto));
-        }
-        return resultado;
     }
 
     /** CC -> persona natural (legal_organization_code "2", va en names). NIT -> juridica ("1", va en company). */

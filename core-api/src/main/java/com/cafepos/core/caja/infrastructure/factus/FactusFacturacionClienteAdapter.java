@@ -4,6 +4,7 @@ import com.cafepos.core.caja.domain.ClienteTransmisionFactus;
 import com.cafepos.core.caja.domain.FacturaDianTransmisorPort;
 import com.cafepos.core.caja.domain.ItemTransmisionFactus;
 import com.cafepos.core.caja.domain.PagoTransmisionFactus;
+import com.cafepos.core.caja.domain.ResultadoEnvioCorreoFactus;
 import com.cafepos.core.caja.domain.ResultadoTransmisionFactus;
 import com.cafepos.core.caja.domain.SolicitudTransmisionFactus;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -53,6 +54,9 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
     private static final String CASH_ROUNDING_FIJO = "0.00";
     private static final String UNIDAD_MEDIDA_UNICA = "94";
     private static final String CODIGO_ESTANDAR_ADOPCION = "999";
+    /** "Recargo condicionado" - unico concept_type de recargo disponible en la tabla de referencia de Factus, ver tablas-de-referencia. */
+    private static final String CONCEPT_TYPE_RECARGO = "03";
+    private static final String RAZON_PROPINA = "propina";
 
     private static final Logger log = LoggerFactory.getLogger(FactusFacturacionClienteAdapter.class);
 
@@ -103,6 +107,45 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
         } catch (RuntimeException ex) {
             log.warn("Respuesta inesperada de Factus bills/validate: {}", ex.getMessage());
             return fallo("Respuesta inesperada de Factus");
+        }
+    }
+
+    @Override
+    public ResultadoEnvioCorreoFactus enviarCorreo(String numeroFactura, String email, String clientId,
+                                                     String clientSecret, String username, String password,
+                                                     String ambiente) {
+        String baseUrl = "produccion".equals(ambiente) ? BASE_URL_PRODUCCION : BASE_URL_SANDBOX;
+        RestClient restClient = restClientBuilder.requestFactory(requestFactoryConTimeout()).build();
+
+        String accessToken;
+        try {
+            accessToken = autenticar(restClient, baseUrl, clientId, clientSecret, username, password);
+        } catch (RestClientException ex) {
+            log.warn("No se pudo autenticar contra Factus para reenviar correo ({}): {}", baseUrl, mensajeSeguro(ex));
+            return new ResultadoEnvioCorreoFactus(false, "No se pudo autenticar contra Factus");
+        }
+
+        try {
+            // toBodilessEntity: la respuesta 200 de este endpoint trae el
+            // adjunto (representacion grafica en zip), no un JSON de
+            // confirmacion - no hace falta parsearla, solo confirmar el
+            // status HTTP.
+            restClient.post()
+                    .uri(baseUrl + "/v2/bills/{numero}/send-email", numeroFactura)
+                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("Accept", MediaType.APPLICATION_JSON_VALUE)
+                    .body(new EnviarCorreoBody(email))
+                    .retrieve()
+                    .toBodilessEntity();
+            return new ResultadoEnvioCorreoFactus(true, null);
+        } catch (RestClientException ex) {
+            String detalle = detalleValidacion(ex);
+            log.warn("Fallo al reenviar correo de factura {} via Factus ({}): {}", numeroFactura, baseUrl, detalle);
+            return new ResultadoEnvioCorreoFactus(false, "Factus no pudo enviar el correo: " + detalle);
+        } catch (RuntimeException ex) {
+            log.warn("Respuesta inesperada de Factus send-email: {}", ex.getMessage());
+            return new ResultadoEnvioCorreoFactus(false, "Respuesta inesperada de Factus");
         }
     }
 
@@ -178,7 +221,22 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
                 .toList();
 
         return new FacturaBody(numberingRangeId, solicitud.referenceCode(), DOCUMENT_FACTURA, OPERATION_TYPE_ESTANDAR,
-                pagos, CASH_ROUNDING_FIJO, customer, items);
+                pagos, CASH_ROUNDING_FIJO, customer, items, construirAllowanceCharges(solicitud));
+    }
+
+    /**
+     * Propina como recargo a nivel de factura — Factus la contempla via
+     * allowance_charges (concept_type "03" = "Recargo condicionado", unico
+     * codigo de recargo disponible en su tabla de referencia), no como item
+     * de la venta ni excluida del todo (ver Javadoc de SolicitudTransmisionFactus).
+     * Lista vacia si no hubo propina: Factus no exige el campo.
+     */
+    private List<AllowanceCharge> construirAllowanceCharges(SolicitudTransmisionFactus solicitud) {
+        if (solicitud.propina() == null || solicitud.propina().signum() <= 0) {
+            return List.of();
+        }
+        return List.of(new AllowanceCharge(CONCEPT_TYPE_RECARGO, true, RAZON_PROPINA,
+                formatoMonto(solicitud.baseImponiblePropina()), formatoMonto(solicitud.propina())));
     }
 
     private String formatoMonto(BigDecimal valor) {
@@ -193,7 +251,7 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
     /** numberingRangeId: ver Javadoc de la clase - Factus rechaza con 422 sin este campo (confirmado en vivo 02-sep-2026). */
     private record FacturaBody(Long numberingRangeId, String referenceCode, String document, String operationType,
                                 List<PaymentDetail> paymentDetails, String cashRoundingAmount, Customer customer,
-                                List<Item> items) {
+                                List<Item> items, List<AllowanceCharge> allowanceCharges) {
     }
 
     private record PaymentDetail(String paymentForm, String paymentMethodCode, String amount) {
@@ -208,5 +266,13 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
     }
 
     private record Tax(String code, String rate) {
+    }
+
+    /** Ver construirAllowanceCharges — hoy solo se usa para propina, pero el shape es generico (Factus lo permite para cualquier recargo/descuento de factura). */
+    private record AllowanceCharge(String conceptType, boolean isSurcharge, String reason, String baseAmount,
+                                    String amount) {
+    }
+
+    private record EnviarCorreoBody(String email) {
     }
 }
