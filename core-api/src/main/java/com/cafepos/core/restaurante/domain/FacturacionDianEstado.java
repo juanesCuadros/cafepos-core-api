@@ -20,14 +20,16 @@ public record FacturacionDianEstado(
         LocalDate fechaExpedicion,
         LocalDate fechaVencimiento,
         String ambiente,
-        String estado) {
+        String estado,
+        Long numberingRangeId) {
 
     public static FacturacionDianEstado noConfigurada() {
-        return new FacturacionDianEstado(false, "inactiva", null, null, null, null, null, null, null, null);
+        return new FacturacionDianEstado(false, "inactiva", null, null, null, null, null, null, null, null, null);
     }
 
     public static FacturacionDianEstado de(ResolucionVigenteResumen r, String estadoConexion) {
         return new FacturacionDianEstado(true, estadoConexion, r.prefijo(), r.rangoInicio(), r.rangoFin(),
-                r.numeracionActual(), r.fechaExpedicion(), r.fechaVencimiento(), r.ambiente(), r.estado());
+                r.numeracionActual(), r.fechaExpedicion(), r.fechaVencimiento(), r.ambiente(), r.estado(),
+                r.numberingRangeId());
     }
 }

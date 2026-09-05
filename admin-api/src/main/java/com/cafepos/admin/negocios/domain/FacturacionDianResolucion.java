@@ -67,6 +67,10 @@ public class FacturacionDianResolucion {
     @Column(name = "numeracion_actual")
     private Long numeracionActual;
 
+    /** Id que Factus asigna al rango de numeracion (ver V33 de core-api) - obligatorio para que bills/validate no rechace con 422. */
+    @Column(name = "numbering_range_id")
+    private Long numberingRangeId;
+
     @Column
     private String ambiente;
 
@@ -119,7 +123,7 @@ public class FacturacionDianResolucion {
     public void configurarCredencialesFactus(String clientIdFactus, String clientSecretFactus, String usernameFactus,
                                               String passwordFactus, Long rangoInicio, Long rangoFin, String ambiente,
                                               String estado, String prefijo, LocalDate fechaExpedicion,
-                                              LocalDate fechaVencimiento) {
+                                              LocalDate fechaVencimiento, Long numberingRangeId) {
         this.clientIdFactus = clientIdFactus;
         this.clientSecretFactus = clientSecretFactus;
         this.usernameFactus = usernameFactus;
@@ -128,10 +132,11 @@ public class FacturacionDianResolucion {
         this.rangoFin = rangoFin;
         this.ambiente = ambiente;
         this.estado = estado;
-        // prefijo/fechas: null significa "no tocar", NO "borrar" — son
-        // opcionales en el request para no romper integraciones que ya
-        // llamaban a este endpoint sin ellos, y reconfigurar credenciales no
-        // deberia perder el prefijo real que la DIAN asigno por resolucion.
+        // prefijo/fechas/numberingRangeId: null significa "no tocar", NO
+        // "borrar" — son opcionales en el request para no romper
+        // integraciones que ya llamaban a este endpoint sin ellos, y
+        // reconfigurar credenciales no deberia perder datos ya configurados
+        // que la DIAN/Factus asignaron por fuera de este flujo.
         if (prefijo != null) {
             this.prefijo = prefijo;
         }
@@ -140,6 +145,9 @@ public class FacturacionDianResolucion {
         }
         if (fechaVencimiento != null) {
             this.fechaVencimiento = fechaVencimiento;
+        }
+        if (numberingRangeId != null) {
+            this.numberingRangeId = numberingRangeId;
         }
         this.numeracionActual = 0L;
         this.updatedAt = OffsetDateTime.now();

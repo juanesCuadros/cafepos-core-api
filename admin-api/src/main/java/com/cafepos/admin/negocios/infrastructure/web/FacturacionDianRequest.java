@@ -29,5 +29,15 @@ public record FacturacionDianRequest(
          */
         String prefijo,
         LocalDate fechaExpedicion,
-        LocalDate fechaVencimiento) {
+        LocalDate fechaVencimiento,
+
+        /*
+         * Id que Factus asigna al rango de numeracion (GET /v2/numbering-ranges,
+         * campo "id" - NO es rangoInicio/rangoFin). Opcional en el request por
+         * el mismo motivo que prefijo/fechas, pero en la practica core-api no
+         * transmite ninguna factura a Factus sin esto configurado (ver V33 y
+         * FacturacionDianService.credencialesFactusPara en core-api) - la
+         * cuenta sandbox de este proyecto ya devolvio 422 sin el.
+         */
+        Long numberingRangeId) {
 }

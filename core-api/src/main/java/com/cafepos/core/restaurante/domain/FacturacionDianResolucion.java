@@ -68,6 +68,10 @@ public class FacturacionDianResolucion {
     @Column(name = "numeracion_actual")
     private Long numeracionActual;
 
+    /** Id que Factus asigna al rango de numeracion (ver V33) - va en cada POST /v2/bills/validate, distinto de rangoInicio/rangoFin. */
+    @Column(name = "numbering_range_id")
+    private Long numberingRangeId;
+
     @Column(name = "fecha_expedicion")
     private LocalDate fechaExpedicion;
 
@@ -125,6 +129,7 @@ public class FacturacionDianResolucion {
      * bloqueando cualquier otra forma de leerlos.
      */
     public CredencialesFactus credencialesFactus() {
-        return new CredencialesFactus(clientIdFactus, clientSecretFactus, usernameFactus, passwordFactus, ambiente);
+        return new CredencialesFactus(clientIdFactus, clientSecretFactus, usernameFactus, passwordFactus, ambiente,
+                numberingRangeId);
     }
 }

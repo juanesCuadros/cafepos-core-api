@@ -21,7 +21,8 @@ class FacturacionDianRepositoryAdapter implements FacturacionDianRepository {
     public Optional<ResolucionVigenteResumen> buscarVigenteResumen() {
         return jpaRepository.buscarVigenteResumen().map(p -> new ResolucionVigenteResumen(
                 p.getPrefijo(), p.getRangoInicio(), p.getRangoFin(), p.getNumeracionActual(),
-                p.getFechaExpedicion(), p.getFechaVencimiento(), p.getAmbiente(), p.getEstado()));
+                p.getFechaExpedicion(), p.getFechaVencimiento(), p.getAmbiente(), p.getEstado(),
+                p.getNumberingRangeId()));
     }
 
     @Override

@@ -18,7 +18,8 @@ import java.time.LocalDate;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record FacturacionDianResponse(String estadoConexion, String mensaje, String prefijo, Long rangoInicio,
                                        Long rangoFin, Long numeracionActual, LocalDate fechaExpedicion,
-                                       LocalDate fechaVencimiento, String ambiente, String estado) {
+                                       LocalDate fechaVencimiento, String ambiente, String estado,
+                                       Long numberingRangeId) {
 
     private static final String MENSAJE_NO_CONFIGURADO =
             "La facturación electrónica aún no está configurada. Contacta a soporte.";
@@ -26,9 +27,10 @@ public record FacturacionDianResponse(String estadoConexion, String mensaje, Str
     public static FacturacionDianResponse de(FacturacionDianEstado e) {
         if (!e.configurada()) {
             return new FacturacionDianResponse("inactiva", MENSAJE_NO_CONFIGURADO, null, null, null, null, null,
-                    null, null, null);
+                    null, null, null, null);
         }
         return new FacturacionDianResponse(e.estadoConexion(), null, e.prefijo(), e.rangoInicio(), e.rangoFin(),
-                e.numeracionActual(), e.fechaExpedicion(), e.fechaVencimiento(), e.ambiente(), e.estado());
+                e.numeracionActual(), e.fechaExpedicion(), e.fechaVencimiento(), e.ambiente(), e.estado(),
+                e.numberingRangeId());
     }
 }

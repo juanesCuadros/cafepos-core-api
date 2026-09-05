@@ -182,7 +182,8 @@ public class NegocioController {
             @Valid @RequestBody FacturacionDianRequest request) {
         facturacionDianAdminService.configurarCredenciales(tenantId, request.ambiente(), request.clientId(),
                 request.clientSecret(), request.username(), request.password(), request.rangoInicio(),
-                request.rangoFin(), request.prefijo(), request.fechaExpedicion(), request.fechaVencimiento());
+                request.rangoFin(), request.prefijo(), request.fechaExpedicion(), request.fechaVencimiento(),
+                request.numberingRangeId());
         return new FacturacionDianResponse(tenantId, true);
     }
 }

@@ -14,5 +14,5 @@ package com.cafepos.core.restaurante.domain;
  */
 @org.springframework.modulith.NamedInterface("credencialesFactus")
 public record CredencialesFactus(String clientId, String clientSecret, String username, String password,
-                                  String ambiente) {
+                                  String ambiente, Long numberingRangeId) {
 }

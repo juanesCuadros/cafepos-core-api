@@ -35,7 +35,8 @@ interface FacturacionDianJpaRepository extends TenantAwareRepository<Facturacion
     @Query(value = """
             SELECT prefijo, rango_inicio AS rangoInicio, rango_fin AS rangoFin,
                    numeracion_actual AS numeracionActual, fecha_expedicion AS fechaExpedicion,
-                   fecha_vencimiento AS fechaVencimiento, ambiente, estado
+                   fecha_vencimiento AS fechaVencimiento, ambiente, estado,
+                   numbering_range_id AS numberingRangeId
             FROM facturacion_dian_resolucion
             ORDER BY id DESC
             LIMIT 1
@@ -72,6 +73,7 @@ interface FacturacionDianJpaRepository extends TenantAwareRepository<Facturacion
         LocalDate getFechaVencimiento();
         String getAmbiente();
         String getEstado();
+        Long getNumberingRangeId();
     }
 
     interface NumeroFacturaReservadoProjection {

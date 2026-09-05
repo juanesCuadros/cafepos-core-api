@@ -66,7 +66,7 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
     @Override
     public ResultadoTransmisionFactus transmitir(SolicitudTransmisionFactus solicitud, String clientId,
                                                    String clientSecret, String username, String password,
-                                                   String ambiente) {
+                                                   String ambiente, Long numberingRangeId) {
         String baseUrl = "produccion".equals(ambiente) ? BASE_URL_PRODUCCION : BASE_URL_SANDBOX;
         RestClient restClient = restClientBuilder.requestFactory(requestFactoryConTimeout()).build();
 
@@ -79,7 +79,7 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
         }
 
         try {
-            FacturaBody body = construirBody(solicitud);
+            FacturaBody body = construirBody(solicitud, numberingRangeId);
             JsonNode respuesta = restClient.post()
                     .uri(baseUrl + "/v2/bills/validate")
                     .headers(headers -> headers.setBearerAuth(accessToken))
@@ -93,8 +93,10 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
             // cuerpo de la respuesta: un 422 de bills/validate trae el detalle
             // de que campo rechazo Factus, y sin eso no hay forma de depurar
             // la integracion (confirmado en vivo 02-sep-2026: la primera
-            // factura real fallo con 422 y el log solo decia el status, no el
-            // motivo). El cuerpo de ESTE endpoint son errores de validacion de
+            // factura real fallo con 422 por falta de numbering_range_id en
+            // el body, y el log solo decia el status, no el motivo real - ver
+            // V33, ya se manda el campo). El cuerpo de ESTE endpoint son
+            // errores de validacion de
             // la factura, nunca credenciales — esas solo viajan a /oauth/token.
             String detalle = detalleValidacion(ex);
             log.warn("Fallo la llamada a Factus bills/validate ({}): {}", baseUrl, detalle);
@@ -160,7 +162,7 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
         return token.accessToken();
     }
 
-    private FacturaBody construirBody(SolicitudTransmisionFactus solicitud) {
+    private FacturaBody construirBody(SolicitudTransmisionFactus solicitud, Long numberingRangeId) {
         ClienteTransmisionFactus c = solicitud.cliente();
         Customer customer = new Customer(c.identificationDocumentCode(), c.identification(),
                 c.legalOrganizationCode(), TRIBUTE_CODE_DEFAULT, c.names(), c.company(), c.email());
@@ -175,8 +177,8 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
                 .map(p -> new PaymentDetail(PAYMENT_FORM_CONTADO, p.paymentMethodCode(), formatoMonto(p.monto())))
                 .toList();
 
-        return new FacturaBody(solicitud.referenceCode(), DOCUMENT_FACTURA, OPERATION_TYPE_ESTANDAR, pagos,
-                CASH_ROUNDING_FIJO, customer, items);
+        return new FacturaBody(numberingRangeId, solicitud.referenceCode(), DOCUMENT_FACTURA, OPERATION_TYPE_ESTANDAR,
+                pagos, CASH_ROUNDING_FIJO, customer, items);
     }
 
     private String formatoMonto(BigDecimal valor) {
@@ -188,7 +190,8 @@ class FactusFacturacionClienteAdapter implements FacturaDianTransmisorPort {
     private record FactusTokenResponse(String accessToken, Integer expiresIn) {
     }
 
-    private record FacturaBody(String referenceCode, String document, String operationType,
+    /** numberingRangeId: ver Javadoc de la clase - Factus rechaza con 422 sin este campo (confirmado en vivo 02-sep-2026). */
+    private record FacturaBody(Long numberingRangeId, String referenceCode, String document, String operationType,
                                 List<PaymentDetail> paymentDetails, String cashRoundingAmount, Customer customer,
                                 List<Item> items) {
     }

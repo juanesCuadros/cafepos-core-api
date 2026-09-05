@@ -20,5 +20,6 @@ public record ResolucionVigenteResumen(
         LocalDate fechaExpedicion,
         LocalDate fechaVencimiento,
         String ambiente,
-        String estado) {
+        String estado,
+        Long numberingRangeId) {
 }

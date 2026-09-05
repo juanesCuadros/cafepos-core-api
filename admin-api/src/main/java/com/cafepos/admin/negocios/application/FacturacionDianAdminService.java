@@ -34,13 +34,15 @@ public class FacturacionDianAdminService {
     @Transactional
     public void configurarCredenciales(Integer tenantId, String ambienteFactus, String clientId, String clientSecret,
                                         String username, String password, Long rangoInicio, Long rangoFin,
-                                        String prefijo, LocalDate fechaExpedicion, LocalDate fechaVencimiento) {
+                                        String prefijo, LocalDate fechaExpedicion, LocalDate fechaVencimiento,
+                                        Long numberingRangeId) {
         tenantRepository.findById(tenantId).orElseThrow(TenantNoEncontradoException::new);
 
         FacturacionDianResolucion resolucion = facturacionDianResolucionRepository.buscarVigentePorTenant(tenantId)
                 .orElseGet(() -> FacturacionDianResolucion.crear(tenantId));
         resolucion.configurarCredencialesFactus(clientId, clientSecret, username, password, rangoInicio, rangoFin,
-                mapearAmbienteDb(ambienteFactus), "vigente", prefijo, fechaExpedicion, fechaVencimiento);
+                mapearAmbienteDb(ambienteFactus), "vigente", prefijo, fechaExpedicion, fechaVencimiento,
+                numberingRangeId);
         facturacionDianResolucionRepository.guardar(resolucion);
     }
 

@@ -95,6 +95,11 @@ public class FacturacionDianService {
      * tenant no tiene resolucion vigente, o si la tiene pero sin las 4
      * credenciales Factus completas (resolucion dada de alta manualmente en
      * base sin configurar Factus todavia, ver Javadoc de FacturacionDianResolucion).
+     * numberingRangeId tambien se exige aca (ver V33): Factus devuelve 422 en
+     * bills/validate sin el, asi que un tenant sin este campo configurado
+     * debe quedar igual de "incompleto" que uno sin credenciales, en vez de
+     * dejar que la llamada real a Factus falle con un error dificil de
+     * asociar a la causa real.
      * Sin parametro tenantId a proposito — RLS + TenantContext ya escopan
      * buscarVigenteConCredenciales() al tenant actual, mismo criterio que
      * el resto de metodos de este service.
@@ -104,6 +109,6 @@ public class FacturacionDianService {
         return facturacionDianRepository.buscarVigenteConCredenciales()
                 .map(FacturacionDianResolucion::credencialesFactus)
                 .filter(c -> c.clientId() != null && c.clientSecret() != null && c.username() != null
-                        && c.password() != null);
+                        && c.password() != null && c.numberingRangeId() != null);
     }
 }

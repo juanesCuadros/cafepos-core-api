@@ -144,10 +144,10 @@ public class FacturaDianTransmisionService {
 
         Optional<CredencialesFactus> credencialesOpt = facturacionDianService.credencialesFactusPara();
         if (credencialesOpt.isEmpty()) {
-            log.warn("Factura {} - tenant sin credenciales Factus completas configuradas, se deja sin transmitir",
+            log.warn("Factura {} - tenant sin credenciales Factus o numbering_range_id completos, se deja sin transmitir",
                     facturaDianId);
             return new ResultadoTransmisionFactus(false, null, null, null, false,
-                    "Sin credenciales Factus configuradas");
+                    "Sin credenciales Factus (o rango de numeracion) configurados");
         }
         CredencialesFactus credenciales = credencialesOpt.get();
 
@@ -156,7 +156,7 @@ public class FacturaDianTransmisionService {
 
         ResultadoTransmisionFactus resultado = transmisorPort.transmitir(solicitud, credenciales.clientId(),
                 credenciales.clientSecret(), credenciales.username(), credenciales.password(),
-                credenciales.ambiente());
+                credenciales.ambiente(), credenciales.numberingRangeId());
 
         if (resultado.exitoso()) {
             FacturaDian aActualizar = facturaDianRepository.buscarPorId(facturaDianId)

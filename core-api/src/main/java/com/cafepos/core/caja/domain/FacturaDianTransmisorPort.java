@@ -10,5 +10,5 @@ package com.cafepos.core.caja.domain;
 public interface FacturaDianTransmisorPort {
 
     ResultadoTransmisionFactus transmitir(SolicitudTransmisionFactus solicitud, String clientId, String clientSecret,
-                                           String username, String password, String ambiente);
+                                           String username, String password, String ambiente, Long numberingRangeId);
 }
