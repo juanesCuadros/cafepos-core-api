@@ -17,4 +17,9 @@ class NotaCreditoRepositoryAdapter implements NotaCreditoRepository {
     public NotaCredito guardar(NotaCredito notaCredito) {
         return jpaRepository.save(notaCredito);
     }
+
+    @Override
+    public boolean existePorFacturaId(Integer facturaId) {
+        return jpaRepository.existsByFacturaId(facturaId);
+    }
 }

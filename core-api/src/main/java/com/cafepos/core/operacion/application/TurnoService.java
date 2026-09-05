@@ -8,6 +8,7 @@ import com.cafepos.core.operacion.domain.UsuarioSinEmpleadoException;
 import com.cafepos.core.shared.seguridad.Usuario;
 import com.cafepos.core.shared.seguridad.UsuarioRepository;
 import com.cafepos.core.shared.tenant.TenantContext;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +31,18 @@ public class TurnoService {
         return turnoRepository.buscarActivoPorUsuario(usuarioId);
     }
 
+    /**
+     * El chequeo de abajo es "check-then-act" sin bloqueo — dos requests
+     * casi simultaneas para el mismo usuario pueden pasarlo las dos antes de
+     * que ninguna confirme su INSERT (mismo problema real que ya paso con
+     * mesas, ver V29__pedido_mesa_activo_unico.sql). La garantia real es el
+     * indice unico parcial de V31__turno_activo_unico.sql — este chequeo
+     * previo sigue sirviendo para el caso normal (dar un error legible sin
+     * ni siquiera intentar el INSERT), pero si igual se pierde la carrera,
+     * el INSERT choca contra el indice y Postgres tira
+     * DataIntegrityViolationException — se traduce al mismo error legible en
+     * vez de dejarlo escapar como 500 generico.
+     */
     @Transactional
     public Turno iniciar(Integer usuarioId) {
         if (turnoRepository.buscarActivoPorUsuario(usuarioId).isPresent()) {
@@ -40,7 +53,11 @@ public class TurnoService {
             throw new UsuarioSinEmpleadoException();
         }
         Turno turno = new Turno(TenantContext.getCurrentTenantId(), usuario.getEmpleadoId(), usuarioId);
-        return turnoRepository.guardar(turno);
+        try {
+            return turnoRepository.guardar(turno);
+        } catch (DataIntegrityViolationException ex) {
+            throw new TurnoYaActivoException();
+        }
     }
 
     @Transactional

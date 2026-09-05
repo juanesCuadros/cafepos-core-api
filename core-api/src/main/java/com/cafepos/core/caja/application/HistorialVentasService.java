@@ -6,6 +6,7 @@ import com.cafepos.core.caja.domain.NotaCredito;
 import com.cafepos.core.caja.domain.NotaCreditoRepository;
 import com.cafepos.core.caja.domain.Venta;
 import com.cafepos.core.caja.domain.VentaNoEncontradaException;
+import com.cafepos.core.caja.domain.VentaYaAnuladaException;
 import com.cafepos.core.caja.domain.VentaPago;
 import com.cafepos.core.caja.domain.VentaPagoRepository;
 import com.cafepos.core.caja.domain.VentaRepository;
@@ -113,11 +114,18 @@ public class HistorialVentasService {
      * Primer y unico caso instrumentado con @Auditable por ahora (prueba de
      * concepto, ver shared.auditoria) — registrarAntes(venta) tiene que
      * llamarse ANTES de venta.anular() para capturar el estado real previo.
+     *
+     * `estaCobrada()` existia en la entidad pero nadie lo llamaba — anular
+     * una venta ya anulada no se rechazaba y generaba otra nota_credito mas
+     * cada vez (ver FASE1_AUDITORIA_OPERACION_CAJA_PRODUCTOS.md 3.2.1).
      */
     @Transactional
     @Auditable(entidadTipo = "venta", accion = "anular", entidadIdExpression = "#ventaId")
     public AnulacionResultado anular(Integer ventaId, String motivo) {
         Venta venta = buscarVenta(ventaId);
+        if (!venta.estaCobrada()) {
+            throw new VentaYaAnuladaException();
+        }
         AuditoriaContext.registrarAntes(venta);
         venta.anular();
         venta = ventaRepository.guardar(venta);

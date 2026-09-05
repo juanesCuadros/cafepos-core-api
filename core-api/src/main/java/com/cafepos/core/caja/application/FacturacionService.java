@@ -7,6 +7,7 @@ import com.cafepos.core.caja.domain.FacturaListadoItem;
 import com.cafepos.core.caja.domain.FacturaNoEncontradaException;
 import com.cafepos.core.caja.domain.NotaCredito;
 import com.cafepos.core.caja.domain.NotaCreditoRepository;
+import com.cafepos.core.caja.domain.NotaCreditoYaExisteException;
 import com.cafepos.core.caja.domain.ResultadoTransmisionFactus;
 import com.cafepos.core.caja.domain.Venta;
 import com.cafepos.core.caja.domain.VentaNoEncontradaException;
@@ -136,11 +137,20 @@ public class FacturacionService {
      * requiere_pin=true mas cercana semanticamente). nota_credito SIN
      * devolucion_id — anulacion directa de factura, distinta de una
      * devolucion (ver DevolucionService.solicitar).
+     *
+     * No habia ningun chequeo de si esta factura ya tenia una nota_credito
+     * generada — el boton "Generar nota credito" del frontend tampoco
+     * deshabilita nada, asi que se podia clickear varias veces sobre la
+     * misma factura sin ninguna carrera ni llamada directa a la API (ver
+     * FASE1_AUDITORIA_OPERACION_CAJA_PRODUCTOS.md 3.4.2).
      */
     @Transactional
     @Auditable(entidadTipo = "factura_dian", accion = "anular", entidadIdExpression = "#id")
     public AnularFacturaResultado anular(Integer id, String motivo) {
         FacturaDian factura = buscarFactura(id);
+        if (notaCreditoRepository.existePorFacturaId(id)) {
+            throw new NotaCreditoYaExisteException();
+        }
         AuditoriaContext.registrarAntes(factura);
         Venta venta = buscarVenta(factura.getVentaId());
         NotaCredito notaCredito = new NotaCredito(factura.getTenantId(), factura.getId(), motivo, venta.getTotal());

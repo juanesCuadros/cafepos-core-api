@@ -4,6 +4,7 @@ import com.cafepos.core.caja.domain.DevolucionItem;
 import com.cafepos.core.caja.domain.DevolucionItemRepository;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Repository
@@ -23,5 +24,10 @@ class DevolucionItemRepositoryAdapter implements DevolucionItemRepository {
     @Override
     public List<DevolucionItem> listarDeDevolucion(Integer devolucionId) {
         return jpaRepository.findByDevolucionId(devolucionId);
+    }
+
+    @Override
+    public BigDecimal sumaCantidadDevueltaDeItem(Integer pedidoItemId) {
+        return jpaRepository.sumaCantidadPorPedidoItem(pedidoItemId);
     }
 }

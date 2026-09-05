@@ -1,5 +1,6 @@
 package com.cafepos.core.caja.application;
 
+import com.cafepos.core.caja.domain.CantidadDevolucionExcedeDisponibleException;
 import com.cafepos.core.caja.domain.Devolucion;
 import com.cafepos.core.caja.domain.DevolucionItem;
 import com.cafepos.core.caja.domain.DevolucionItemRepository;
@@ -122,6 +123,16 @@ public class DevolucionService {
             PedidoItemParaVenta pedidoItem = itemsPedido.get(itemInput.pedidoItemId());
             if (pedidoItem == null) {
                 throw new PedidoItemNoEncontradoException();
+            }
+            // Nada impedía devolver mas unidades de las compradas, ni devolver
+            // el mismo pedido_item dos veces en devoluciones separadas — el
+            // frontend (nueva-devolucion-modal.tsx) ya topa esto en su propio
+            // stepper, pero acá no había ninguna garantía real (ver
+            // FASE1_AUDITORIA_OPERACION_CAJA_PRODUCTOS.md 3.3.1).
+            BigDecimal yaDevuelto = devolucionItemRepository.sumaCantidadDevueltaDeItem(itemInput.pedidoItemId());
+            BigDecimal disponible = pedidoItem.cantidad().subtract(yaDevuelto);
+            if (itemInput.cantidad().compareTo(disponible) > 0) {
+                throw new CantidadDevolucionExcedeDisponibleException(itemInput.pedidoItemId(), disponible);
             }
             montoDevuelto = montoDevuelto.add(pedidoItem.precioUnitario().multiply(itemInput.cantidad()));
             if (ESTADOS_ITEM_YA_PREPARADO.contains(pedidoItem.estadoPreparacion())) {

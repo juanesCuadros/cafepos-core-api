@@ -1,5 +1,6 @@
 package com.cafepos.core.caja.infrastructure.web;
 
+import com.cafepos.core.caja.domain.CantidadDevolucionExcedeDisponibleException;
 import com.cafepos.core.caja.domain.ClienteNoEncontradoException;
 import com.cafepos.core.caja.domain.DevolucionNoEncontradaException;
 import com.cafepos.core.caja.domain.EstadoFacturaInvalidoException;
@@ -8,12 +9,14 @@ import com.cafepos.core.caja.domain.JornadaNoAbiertaException;
 import com.cafepos.core.caja.domain.JornadaNoEncontradaException;
 import com.cafepos.core.caja.domain.JornadaYaAbiertaException;
 import com.cafepos.core.caja.domain.MetodoPagoNoEncontradoException;
+import com.cafepos.core.caja.domain.NotaCreditoYaExisteException;
 import com.cafepos.core.caja.domain.PagoNoCoincideException;
 import com.cafepos.core.caja.domain.PedidoItemNoEncontradoException;
 import com.cafepos.core.caja.domain.PedidoNoEncontradoException;
 import com.cafepos.core.caja.domain.PedidoYaCerradoException;
 import com.cafepos.core.caja.domain.PromocionNoEncontradaException;
 import com.cafepos.core.caja.domain.VentaNoEncontradaException;
+import com.cafepos.core.caja.domain.VentaYaAnuladaException;
 import com.cafepos.core.shared.excepciones.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -80,6 +83,11 @@ public class CajaExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
     }
 
+    @ExceptionHandler(VentaYaAnuladaException.class)
+    public ResponseEntity<ErrorResponse> handleVentaYaAnulada(VentaYaAnuladaException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
+    }
+
     @ExceptionHandler(FacturaNoEncontradaException.class)
     public ResponseEntity<ErrorResponse> handleFacturaNoEncontrada(FacturaNoEncontradaException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
@@ -98,5 +106,16 @@ public class CajaExceptionHandler {
     @ExceptionHandler(PedidoItemNoEncontradoException.class)
     public ResponseEntity<ErrorResponse> handlePedidoItemNoEncontrado(PedidoItemNoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(NotaCreditoYaExisteException.class)
+    public ResponseEntity<ErrorResponse> handleNotaCreditoYaExiste(NotaCreditoYaExisteException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
+    }
+
+    @ExceptionHandler(CantidadDevolucionExcedeDisponibleException.class)
+    public ResponseEntity<ErrorResponse> handleCantidadDevolucionExcedeDisponible(
+            CantidadDevolucionExcedeDisponibleException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));
     }
 }
